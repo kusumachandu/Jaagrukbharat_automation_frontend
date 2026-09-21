@@ -1,0 +1,84 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-display: var(--font-space-grotesk);
+  --font-body: var(--font-inter);
+  --font-mono: var(--font-jbmono);
+}
+
+html,
+body {
+  background-color: #0f1419;
+  color: #e8edf2;
+}
+
+body {
+  font-family: var(--font-body), system-ui, sans-serif;
+  background-image:
+    linear-gradient(rgba(38, 49, 61, 0.35) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(38, 49, 61, 0.35) 1px, transparent 1px);
+  background-size: 28px 28px;
+  background-position: -1px -1px;
+}
+
+@layer components {
+  .input {
+    @apply bg-ink-raised border border-ink-line rounded-md px-3 py-2 text-sm text-text-primary placeholder:text-text-dim outline-none focus:border-signal/60 transition-colors;
+  }
+  .btn-ghost {
+    @apply text-text-muted hover:text-text-primary hover:bg-ink-raised border border-ink-line rounded-md px-3 py-1.5 text-sm transition-colors;
+  }
+}
+
+::selection {
+  background: rgba(232, 163, 61, 0.35);
+  color: #fff;
+}
+
+* {
+  scrollbar-color: #26313d #0f1419;
+  scrollbar-width: thin;
+}
+
+/* Focus visibility — kept deliberately, never suppressed */
+:focus-visible {
+  outline: 2px solid #e8a33d;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+@keyframes dash-flow {
+  to {
+    stroke-dashoffset: -24;
+  }
+}
+
+.wire-live {
+  stroke-dasharray: 4 6;
+  animation: dash-flow 0.6s linear infinite;
+}
+
+@keyframes pulse-soft {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.pulse-soft {
+  animation: pulse-soft 1.6s ease-in-out infinite;
+}
