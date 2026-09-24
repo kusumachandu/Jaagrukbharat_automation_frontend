@@ -7,6 +7,7 @@ import { WorkflowCanvas } from "@/components/canvas/WorkflowCanvas";
 import { StepEditorDrawer } from "@/components/canvas/StepEditorDrawer";
 import { RunInputsDialog } from "@/components/RunInputsDialog";
 import {
+  DecisionOutcome,
   Step,
   StepType,
   Trigger,
@@ -17,6 +18,16 @@ import {
   emptyWorkflowInput,
 } from "@/lib/types";
 import { api, ApiError } from "@/lib/api";
+
+// A DecisionOutcome needs a label, a setBranch, or both — never send an
+// empty-string label, or the API's @IsNotEmpty() rejects it.
+function outcomePayload(o: DecisionOutcome) {
+  return {
+    ...(o.label?.trim() ? { label: o.label.trim() } : {}),
+    tone: o.tone,
+    ...(o.setBranch?.trim() ? { setBranch: o.setBranch.trim() } : {}),
+  };
+}
 
 // The exact body the API accepts, built in one place so "what would be
 // saved" can be compared against "what was last saved" to detect unsaved
@@ -50,6 +61,7 @@ function buildPayload(
       selectors: s.selectors,
       enabled: s.enabled !== false,
       ...(s.signInOnly ? { signInOnly: true } : {}),
+      ...(s.branch?.trim() ? { branch: s.branch.trim() } : {}),
       ...(s.type === StepType.DECIDE && s.decision
         ? {
             decision: {
@@ -57,8 +69,8 @@ function buildPayload(
               isRegex: !!s.decision.isRegex,
               scope: s.decision.scope?.trim() || undefined,
               settleMs: s.decision.settleMs,
-              ifFound: { label: s.decision.ifFound.label, tone: s.decision.ifFound.tone },
-              ifNotFound: { label: s.decision.ifNotFound.label, tone: s.decision.ifNotFound.tone },
+              ifFound: outcomePayload(s.decision.ifFound),
+              ifNotFound: outcomePayload(s.decision.ifNotFound),
             },
           }
         : {}),

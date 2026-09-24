@@ -80,6 +80,25 @@ export async function downloadFile(path: string, filename: string): Promise<void
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
+// Same auth problem as downloadFile, for content meant to be displayed
+// in-page (e.g. a run's recording in a <video> element) rather than saved —
+// the caller owns the returned URL and must revoke it when done with it.
+// Trades the server's Range support for staying on the one auth pattern
+// this app already uses everywhere (a bearer header, not a URL token).
+export async function fetchAuthedBlobUrl(path: string): Promise<string> {
+  const token = getToken();
+  const res = await fetch(`${API_BASE}${path}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (res.status === 401) {
+    clearToken();
+    if (typeof window !== "undefined") window.location.href = "/login";
+    throw new ApiError(401, "Session expired — please sign in again");
+  }
+  if (!res.ok) throw new ApiError(res.status, "Could not load that file");
+  return URL.createObjectURL(await res.blob());
+}
+
 export const api = {
   get: <T>(path: string) => request<T>(path, { method: "GET" }),
   post: <T>(path: string, body?: unknown) =>

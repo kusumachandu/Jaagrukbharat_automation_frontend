@@ -48,8 +48,14 @@ export interface RetryPolicy {
 export type ResultTone = "positive" | "negative" | "neutral";
 
 export interface DecisionOutcome {
-  label: string;
+  // Ends the run with this as its result — omit when this outcome only
+  // steers the run down a branch (setBranch) rather than concluding it.
+  // At least one of the two must be set.
+  label?: string;
   tone: ResultTone;
+  // Makes this outcome the run's active branch — later steps tagged
+  // Step.branch with a *different* value are skipped this run.
+  setBranch?: string;
 }
 
 // DECIDE only: look for `text` on the page; found -> ifFound, else ifNotFound.
@@ -89,6 +95,9 @@ export interface Step {
   // has a saved sign-in (see Workflow.keepSignedIn).
   signInOnly?: boolean;
   decision?: Decision;
+  // Only runs while this is the run's active branch (set by an earlier
+  // decide step's outcome — see DecisionOutcome.setBranch). No tag = always runs.
+  branch?: string;
 }
 
 export interface Trigger {
@@ -145,6 +154,11 @@ export interface Run {
   artifacts?: RunArtifact[];
   result?: RunResult;
   usedSavedSignIn?: boolean;
+  // Which path a decide step's setBranch sent this run down, if any.
+  activeBranch?: string;
+  // A screen recording of the whole run, when one was saved (best-effort;
+  // absent on runs from before this existed). GET /runs/:id/recording.
+  recording?: { sizeBytes: number; savedAt: string };
   // Secret in the end-user window link; only ever returned to the owner.
   sessionKey?: string | null;
 }

@@ -20,6 +20,7 @@ import {
 } from "@/lib/types";
 import { LiveBrowserView } from "@/components/LiveBrowserView";
 import { RunSummaryCard } from "@/components/RunSummaryCard";
+import { RecordingPlayer } from "@/components/RecordingPlayer";
 import { RunSummary } from "@/lib/types";
 
 const ACTIVE_STATUSES = new Set([
@@ -41,7 +42,7 @@ export default function RunDetailPage({ params }: { params: { id: string } }) {
   const [clearingSignIn, setClearingSignIn] = useState(false);
   const [signInCleared, setSignInCleared] = useState(false);
   const workflowLoaded = useRef(false);
-  const [view, setView] = useState<"live" | "canvas">("live");
+  const [view, setView] = useState<"live" | "canvas" | "recording">("live");
 
   const poll = useCallback(async () => {
     try {
@@ -171,7 +172,8 @@ export default function RunDetailPage({ params }: { params: { id: string } }) {
       (s) =>
         s.order > lastRan &&
         s.enabled !== false &&
-        !(run.usedSavedSignIn && s.signInOnly)
+        !(run.usedSavedSignIn && s.signInOnly) &&
+        !(run.activeBranch !== undefined && s.branch !== undefined && s.branch !== run.activeBranch)
     );
     if (next) liveByOrder[next.order] = "active";
   }
@@ -242,6 +244,19 @@ export default function RunDetailPage({ params }: { params: { id: string } }) {
             >
               Canvas
             </button>
+            {run?.recording && (
+              <button
+                data-testid="view-recording"
+                onClick={() => setView("recording")}
+                className={`text-xs font-mono uppercase px-2 py-1 rounded ${
+                  view === "recording"
+                    ? "bg-signal/15 text-signal"
+                    : "text-text-muted"
+                }`}
+              >
+                Recording
+              </button>
+            )}
           </div>
           <div className="flex-1 min-h-0">
             {view === "live" && run && (
@@ -249,6 +264,9 @@ export default function RunDetailPage({ params }: { params: { id: string } }) {
                 runId={params.id}
                 active={ACTIVE_STATUSES.has(run.status)}
               />
+            )}
+            {view === "recording" && run?.recording && (
+              <RecordingPlayer runId={params.id} />
             )}
             {view === "canvas" &&
               (workflow ? (

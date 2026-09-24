@@ -311,6 +311,25 @@ export function StepEditorDrawer({
           </span>
         </label>
 
+        <Field
+          label="Branch (optional)"
+          hint="Only runs while an earlier result rule has set this as the active branch — e.g. 'existing' or 'new'. Leave blank to always run."
+        >
+          <input
+            className="input font-mono"
+            data-testid="step-branch"
+            value={step.branch ?? ""}
+            onChange={(e) => {
+              const v = e.target.value;
+              const next: Step = { ...step };
+              if (v.trim()) next.branch = v;
+              else delete next.branch;
+              onChange(next);
+            }}
+            placeholder="e.g. existing, new"
+          />
+        </Field>
+
         <Field label="Step timeout (ms)">
           <input
             type="number"
@@ -424,8 +443,8 @@ function ResultRuleEditor({
         <input
           className="input"
           data-testid={`decision-${which}-label`}
-          placeholder="Result shown to the person, e.g. Eligible"
-          value={o.label}
+          placeholder="Result shown to the person, e.g. Eligible — leave blank if this only sets a branch below"
+          value={o.label ?? ""}
           onChange={(e) =>
             onChange({ ...decision, [which]: { ...o, label: e.target.value } })
           }
@@ -452,6 +471,19 @@ function ResultRuleEditor({
             </button>
           ))}
         </div>
+        <input
+          className="input font-mono text-xs"
+          data-testid={`decision-${which}-branch`}
+          placeholder="Set branch (optional) — e.g. existing, new"
+          value={o.setBranch ?? ""}
+          onChange={(e) => {
+            const v = e.target.value;
+            const next = { ...o };
+            if (v.trim()) next.setBranch = v;
+            else delete next.setBranch;
+            onChange({ ...decision, [which]: next });
+          }}
+        />
       </div>
     );
   }
