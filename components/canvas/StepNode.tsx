@@ -127,6 +127,15 @@ export function StepNode({
                 sign-in
               </span>
             )}
+            {step.branch && (
+              <span
+                data-testid={`branch-chip-${index}`}
+                className={`${step.signInOnly ? '' : 'ml-auto'} rounded border border-ok/40 px-1 text-ok normal-case`}
+                title={`Only runs on the "${step.branch}" branch`}
+              >
+                {step.branch}
+              </span>
+            )}
           </>
         )}
       </div>
