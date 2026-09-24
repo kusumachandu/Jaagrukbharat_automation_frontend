@@ -117,7 +117,7 @@ export default function RecordWorkflowPage() {
     }
   }
 
-  function copyExtensionCode() {
+  async function copyExtensionCode() {
     if (!session) return;
     const token = getToken();
     if (!token) {
@@ -131,10 +131,17 @@ export default function RecordWorkflowPage() {
         token,
       }),
     );
-    navigator.clipboard.writeText(code).then(() => {
+    // The Clipboard API only exists in a secure context (HTTPS, or
+    // localhost) — navigator.clipboard is simply undefined over plain
+    // HTTP on any other host, which is exactly the case for a demo
+    // served that way. Same fallback used everywhere else in the app.
+    try {
+      await navigator.clipboard.writeText(code);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
-    });
+    } catch {
+      window.prompt("Copy this session code:", code);
+    }
   }
 
   if (authLoading || !user) return null;
