@@ -6,6 +6,7 @@ import { ApiError } from "@/lib/api";
 import { PublicSessionView, RunStatus } from "@/lib/types";
 import { PromptCard } from "@/components/session/PromptCard";
 import { RESULT_TONE, StepTimeline, formatBytes, formatDuration } from "@/components/SummaryParts";
+import { BRAND_NAME, PRIVACY_URL } from "@/lib/brand";
 
 const ACTIVE = new Set<RunStatus>([RunStatus.QUEUED, RunStatus.RUNNING, RunStatus.PAUSED]);
 
@@ -76,7 +77,7 @@ export default function SessionWindow({
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-xs font-mono text-text-dim">
             <span className="w-2 h-2 rounded-full bg-signal pulse-soft" />
-            AutoFlow
+            {BRAND_NAME}
           </div>
           <StatusPill status={view.status} waiting={!!awaiting?.canAnswer} />
         </div>
@@ -86,6 +87,12 @@ export default function SessionWindow({
         >
           {view.workflowName}
         </h1>
+        <p data-testid="about-page" className="text-sm text-text-muted mt-2">
+          {BRAND_NAME} is completing this request for you on the official website. If that
+          website asks for a code, it will appear here for you to enter. This is{" "}
+          <span className="text-text-primary">not a government website</span>. Only enter a code
+          for a request you asked {BRAND_NAME} to do, and don&apos;t share this link.
+        </p>
         <div className="mt-4" aria-label="Progress">
           <div className="h-1.5 rounded-full bg-ink-raised overflow-hidden">
             <div
@@ -256,6 +263,17 @@ export default function SessionWindow({
       <footer className="mt-8 text-center text-[11px] font-mono text-text-dim">
         {finished ? "This run has ended." : "This page updates by itself."}
         {problem === "offline" && <span className="text-warn"> · reconnecting…</span>}
+        <div className="mt-2">
+          A service of {BRAND_NAME}
+          {PRIVACY_URL && (
+            <>
+              {" · "}
+              <a href={PRIVACY_URL} target="_blank" rel="noopener noreferrer" className="underline hover:text-text-muted">
+                Privacy policy
+              </a>
+            </>
+          )}
+        </div>
       </footer>
     </Shell>
   );

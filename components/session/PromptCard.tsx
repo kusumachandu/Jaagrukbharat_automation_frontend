@@ -5,6 +5,7 @@ import { publicSession } from "@/lib/public-api";
 import { ApiError } from "@/lib/api";
 import { PublicAwaiting } from "@/lib/types";
 import { OtpBoxes } from "./OtpBoxes";
+import { BRAND_NAME } from "@/lib/brand";
 
 // Where the person is asked for a value — an OTP, a CAPTCHA, a code. Only ever
 // a value: there is no selector, skip or "fix it" control here by design, and
@@ -95,6 +96,11 @@ export function PromptCard({
       {isOtp && !/\d+[- ]?digit/i.test(awaiting.prompt) && (
         <p className="text-sm text-text-muted mt-1">
           Enter the {otpLength}-digit code you received.
+        </p>
+      )}
+      {isOtp && (
+        <p data-testid="otp-caution" className="text-xs text-text-dim mt-2">
+          Only enter this code if you asked {BRAND_NAME} to do this for you.
         </p>
       )}
 
