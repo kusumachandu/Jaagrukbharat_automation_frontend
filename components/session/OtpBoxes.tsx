@@ -11,12 +11,15 @@ export function OtpBoxes({
   onChange,
   disabled,
   onComplete,
+  boxClassName,
 }: {
   length: number;
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
   onComplete?: () => void;
+  // Replaces the default box styling (the branded end-user window has its own).
+  boxClassName?: string;
 }) {
   const refs = useRef<Array<HTMLInputElement | null>>([]);
 
@@ -94,7 +97,10 @@ export function OtpBoxes({
           onKeyDown={(e) => handleKeyDown(i, e)}
           onPaste={(e) => handlePaste(i, e)}
           onFocus={(e) => e.currentTarget.select()}
-          className="w-11 h-14 sm:w-12 sm:h-16 text-center text-2xl font-mono rounded-lg bg-ink-raised border border-ink-line text-text-primary outline-none focus:border-signal focus:ring-2 focus:ring-signal/30 disabled:opacity-50"
+          className={
+            boxClassName ??
+            "w-11 h-14 sm:w-12 sm:h-16 text-center text-2xl font-mono rounded-lg bg-ink-raised border border-ink-line text-text-primary outline-none focus:border-signal focus:ring-2 focus:ring-signal/30 disabled:opacity-50"
+          }
         />
       ))}
     </div>

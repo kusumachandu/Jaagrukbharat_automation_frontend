@@ -9,7 +9,8 @@ import { BRAND_NAME } from "@/lib/brand";
 
 // Where the person is asked for a value — an OTP, a CAPTCHA, a code. Only ever
 // a value: there is no selector, skip or "fix it" control here by design, and
-// the server would refuse them anyway.
+// the server would refuse them anyway. Styled by the end-user window's
+// session.css (.jbs).
 export function PromptCard({
   runId,
   sessionKey,
@@ -67,112 +68,85 @@ export function PromptCard({
 
   if (sent) {
     return (
-      <div
-        data-testid="prompt-sent"
-        className="rounded-2xl border border-ok/40 bg-ok/10 px-5 py-6 text-center"
-      >
-        <div className="text-ok font-display font-semibold">Thanks — got it</div>
-        <p className="text-sm text-text-muted mt-1">Continuing now. You can keep this page open.</p>
+      <div data-testid="prompt-sent" className="note ok">
+        <b>Thanks — got it</b>
+        <div>Continuing now. You can keep this page open.</div>
       </div>
     );
   }
 
+  const hint =
+    isOtp && !/\d+[- ]?digit/i.test(awaiting.prompt)
+      ? `Enter the ${otpLength}-digit code you received.`
+      : awaiting.kind === "captcha"
+        ? "Type the characters exactly as shown in the picture."
+        : null;
+
   return (
-    <form
-      onSubmit={submit}
-      data-testid="prompt-card"
-      data-kind={awaiting.kind}
-      className="rounded-2xl border border-signal/50 bg-ink-panel shadow-glow px-5 py-6 sm:px-7 sm:py-7"
-    >
-      <div className="flex items-center gap-2 mb-2">
-        <span className="w-2 h-2 rounded-full bg-signal pulse-soft" />
-        <span className="font-mono text-xs uppercase tracking-wider text-signal">
-          We need something from you
-        </span>
-      </div>
-      <p className="font-display text-lg sm:text-xl font-semibold text-text-primary leading-snug">
-        {awaiting.prompt}
-      </p>
-      {isOtp && !/\d+[- ]?digit/i.test(awaiting.prompt) && (
-        <p className="text-sm text-text-muted mt-1">
-          Enter the {otpLength}-digit code you received.
-        </p>
-      )}
-      {isOtp && (
-        <p data-testid="otp-caution" className="text-xs text-text-dim mt-2">
-          Only enter this code if you asked {BRAND_NAME} to do this for you.
-        </p>
-      )}
+    <form onSubmit={submit} data-testid="prompt-card" data-kind={awaiting.kind} className="card ask">
+      <h3>Action needed · we&apos;re paused</h3>
+      <h2>{awaiting.prompt}</h2>
+      {hint && <p className="hint">{hint}</p>}
 
       {awaiting.hasImage && (
-        <div className="mt-5">
-          <div className="rounded-xl bg-white p-3 flex items-center justify-center min-h-[72px]">
+        <div>
+          <div className="captcha">
             {image ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img
-                data-testid="prompt-image"
-                src={image}
-                alt="The image to read"
-                className="max-h-56 w-auto max-w-full"
-              />
+              <img data-testid="prompt-image" src={image} alt="The image to read" />
             ) : (
-              <span className="text-xs text-neutral-500 font-mono">
-                {imageError ? "couldn't load the image" : "loading image…"}
-              </span>
+              <span>{imageError ? "couldn't load the image" : "loading image…"}</span>
             )}
           </div>
-          <button
-            type="button"
-            onClick={() => setImageNonce((n) => n + 1)}
-            className="mt-1.5 text-xs text-text-muted hover:text-signal underline decoration-dotted underline-offset-2"
-          >
-            Reload image
+          <button type="button" className="reload" onClick={() => setImageNonce((n) => n + 1)}>
+            Can&apos;t read it? Reload image
           </button>
         </div>
       )}
 
-      <div className="mt-5">
-        {isOtp ? (
+      {isOtp ? (
+        <div className="boxes">
           <OtpBoxes
             length={otpLength}
             value={value}
             onChange={setValue}
             disabled={submitting}
+            boxClassName="otpbox"
             onComplete={() => {
               /* explicit confirm below — never auto-submit a code */
             }}
           />
-        ) : (
-          <input
-            data-testid="prompt-input"
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            autoFocus
-            autoComplete="off"
-            autoCapitalize="none"
-            spellCheck={false}
-            maxLength={64}
-            disabled={submitting}
-            placeholder={awaiting.kind === "captcha" ? "Type what you see above" : "Type it here"}
-            className="input w-full text-lg py-3 text-center tracking-widest font-mono"
-          />
-        )}
-      </div>
+        </div>
+      ) : (
+        <input
+          data-testid="prompt-input"
+          className="field"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          autoFocus
+          autoComplete="off"
+          autoCapitalize="none"
+          spellCheck={false}
+          maxLength={64}
+          disabled={submitting}
+          placeholder={awaiting.kind === "captcha" ? "Type what you see" : "Type it here"}
+        />
+      )}
 
       {error && (
-        <p role="alert" className="text-danger text-sm mt-3 text-center">
+        <p role="alert" className="err">
           {error}
         </p>
       )}
 
-      <button
-        type="submit"
-        data-testid="prompt-submit"
-        disabled={!ready || submitting}
-        className="mt-5 w-full rounded-xl bg-signal text-ink font-semibold py-3 text-base hover:bg-signal-glow transition-colors disabled:opacity-40"
-      >
-        {submitting ? "Sending…" : "Continue"}
+      <button type="submit" data-testid="prompt-submit" className="btn" disabled={!ready || submitting}>
+        {submitting ? "Sending…" : "Submit & continue"}
       </button>
+      {isOtp && (
+        <p data-testid="otp-caution" className="caution">
+          Only enter this code if you asked {BRAND_NAME} to do this for you.
+        </p>
+      )}
     </form>
   );
 }

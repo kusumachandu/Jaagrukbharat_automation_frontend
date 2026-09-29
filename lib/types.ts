@@ -229,12 +229,30 @@ export interface PublicAwaiting {
   canAnswer: boolean;
 }
 
+export type PublicPhaseState = "done" | "active" | "waiting" | "pending" | "failed";
+
+export interface PublicPhase {
+  key: "connect" | "details" | "verify" | "result";
+  title: string;
+  detail: string;
+  state: PublicPhaseState;
+  stepFrom: number;
+  stepTo: number;
+}
+
 export interface PublicSessionView {
   runId: string;
   workflowName: string;
   status: RunStatus;
   summary: RunSummary;
   awaiting: PublicAwaiting | null;
+  // Optional: an older backend doesn't send these, and the page copes without them.
+  siteHost?: string;
+  startedAt?: string;
+  finishedAt?: string;
+  typicalDurationMs?: { lowMs: number; highMs: number; medianMs: number } | null;
+  phases?: PublicPhase[];
+  codes?: { captcha: number; otp: number; other: number; answered: number };
   updatedAt: string;
 }
 
