@@ -7,6 +7,7 @@ import { PublicPhase, PublicSessionView, RunStatus } from "@/lib/types";
 import { PromptCard } from "@/components/session/PromptCard";
 import { formatBytes, formatDuration } from "@/components/SummaryParts";
 import { BRAND_NAME, PRIVACY_URL } from "@/lib/brand";
+import { ResultTables } from "@/components/ResultTables";
 
 const ACTIVE = new Set<RunStatus>([RunStatus.QUEUED, RunStatus.RUNNING, RunStatus.PAUSED]);
 
@@ -212,6 +213,8 @@ export default function SessionWindow({
                 </tbody>
               </table>
             )}
+
+            <ResultTables tables={summary.tables ?? []} variant="cards" />
 
             {summary.files.map((f) => (
               <a

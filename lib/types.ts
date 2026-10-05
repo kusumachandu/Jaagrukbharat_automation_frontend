@@ -189,6 +189,13 @@ export type SummaryStepState =
   | "pending"
   | "disconnected";
 
+export interface ResultTable {
+  label: string;
+  caption?: string;
+  columns: string[];
+  rows: string[][];
+}
+
 export interface RunSummary {
   outcome: "success" | "failed" | "cancelled" | "in_progress";
   headline: string;
@@ -204,6 +211,8 @@ export interface RunSummary {
     note?: string;
   }>;
   highlights: Array<{ label: string; value: string }>;
+  // Tables read off the results page (e.g. a vehicle's challans). Optional: older backends don't send it.
+  tables?: ResultTable[];
   files: Array<{
     id: string;
     filename: string;

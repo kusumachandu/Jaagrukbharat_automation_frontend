@@ -131,6 +131,17 @@
 .jbs .file span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .jbs .file span:last-child { opacity: .8; font: 12px var(--font-jbmono), monospace; white-space: nowrap; }
 
+/* tables read off the results page (e.g. challans) — one card per row */
+.jbs .rtables { margin-top: 14px; display: grid; gap: 14px; }
+.jbs .rhead { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 8px; font-size: 14px; }
+.jbs .rhead span { color: var(--mut); font-size: 12px; }
+.jbs .rcard { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 4px 12px; margin-bottom: 8px; }
+.jbs .rcell { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-top: 1px solid var(--line); font-size: 13px; }
+.jbs .rcell:first-child { border-top: 0; }
+.jbs .rcell span { color: var(--mut); flex: none; max-width: 45%; }
+.jbs .rcell b { font: 500 12px var(--font-jbmono), monospace; text-align: right; overflow-wrap: anywhere; }
+.jbs .rnone { color: var(--mut); font-size: 13px; margin: 0; }
+
 /* phases */
 .jbs .ph { display: flex; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
 .jbs .ph:first-of-type { border-top: 0; }

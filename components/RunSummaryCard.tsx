@@ -4,6 +4,7 @@ import { useState } from "react";
 import { downloadFile, ApiError } from "@/lib/api";
 import { RunSummary } from "@/lib/types";
 import { RESULT_TONE, StepTimeline, formatBytes, formatDuration } from "./SummaryParts";
+import { ResultTables } from "./ResultTables";
 
 // The operator's view of how a finished run went: what happened, what it
 // produced, and — when it failed — why, in plain language (with the raw error
@@ -65,6 +66,12 @@ export function RunSummaryCard({
           {summary.stepsDone}/{summary.stepsTotal} steps
         </div>
       </div>
+
+      {(summary.tables?.length ?? 0) > 0 && (
+        <div className="px-4 pt-4">
+          <ResultTables tables={summary.tables ?? []} variant="table" />
+        </div>
+      )}
 
       <div className="p-4 grid gap-5 md:grid-cols-2">
         <div className="flex flex-col gap-4 min-w-0">
