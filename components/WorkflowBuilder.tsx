@@ -62,6 +62,9 @@ function buildPayload(
       enabled: s.enabled !== false,
       ...(s.signInOnly ? { signInOnly: true } : {}),
       ...(s.branch?.trim() ? { branch: s.branch.trim() } : {}),
+      // Set by scripts, not editable here — but saving must not wipe them.
+      ...(s.extractAs ? { extractAs: s.extractAs } : {}),
+      ...(s.rejection ? { rejection: s.rejection } : {}),
       ...(s.type === StepType.DECIDE && s.decision
         ? {
             decision: {

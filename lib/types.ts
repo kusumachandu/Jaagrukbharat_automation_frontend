@@ -98,6 +98,21 @@ export interface Step {
   // Only runs while this is the run's active branch (set by an earlier
   // decide step's outcome — see DecisionOutcome.setBranch). No tag = always runs.
   branch?: string;
+  // EXTRACT only: "table" reads whole tables (e.g. a vehicle's challans).
+  extractAs?: "text" | "table";
+  // On a step that submits something the website may reject (a CAPTCHA): watch
+  // for the rejection and let the person try again. Not editable in the UI yet —
+  // set by scripts — but must survive a save from the builder.
+  rejection?: Rejection;
+}
+
+export interface Rejection {
+  text?: string;
+  maxAttempts?: number;
+  retryFromOrder?: number;
+  dismissSelector?: string;
+  refreshSelector?: string;
+  settleMs?: number;
 }
 
 export interface Trigger {
