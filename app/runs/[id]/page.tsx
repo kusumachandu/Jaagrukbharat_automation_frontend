@@ -21,6 +21,7 @@ import {
 import { LiveBrowserView } from "@/components/LiveBrowserView";
 import { RunSummaryCard } from "@/components/RunSummaryCard";
 import { RecordingPlayer } from "@/components/RecordingPlayer";
+import { SnapshotTimeline } from "@/components/SnapshotTimeline";
 import { RunSummary } from "@/lib/types";
 
 const ACTIVE_STATUSES = new Set([
@@ -42,7 +43,7 @@ export default function RunDetailPage({ params }: { params: { id: string } }) {
   const [clearingSignIn, setClearingSignIn] = useState(false);
   const [signInCleared, setSignInCleared] = useState(false);
   const workflowLoaded = useRef(false);
-  const [view, setView] = useState<"live" | "canvas" | "recording">("live");
+  const [view, setView] = useState<"live" | "canvas" | "recording" | "snapshots">("live");
 
   const poll = useCallback(async () => {
     try {
@@ -244,6 +245,19 @@ export default function RunDetailPage({ params }: { params: { id: string } }) {
             >
               Canvas
             </button>
+            {!!run?.snapshots?.length && (
+              <button
+                data-testid="view-snapshots"
+                onClick={() => setView("snapshots")}
+                className={`text-xs font-mono uppercase px-2 py-1 rounded ${
+                  view === "snapshots"
+                    ? "bg-signal/15 text-signal"
+                    : "text-text-muted"
+                }`}
+              >
+                Screenshots
+              </button>
+            )}
             {run?.recording && (
               <button
                 data-testid="view-recording"
@@ -264,6 +278,9 @@ export default function RunDetailPage({ params }: { params: { id: string } }) {
                 runId={params.id}
                 active={ACTIVE_STATUSES.has(run.status)}
               />
+            )}
+            {view === "snapshots" && run?.snapshots && (
+              <SnapshotTimeline runId={params.id} snapshots={run.snapshots} />
             )}
             {view === "recording" && run?.recording && (
               <RecordingPlayer runId={params.id} />

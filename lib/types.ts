@@ -174,8 +174,18 @@ export interface Run {
   // A screen recording of the whole run, when one was saved (best-effort;
   // absent on runs from before this existed). GET /runs/:id/recording.
   recording?: { sizeBytes: number; savedAt: string };
+  // Screenshots taken after each action and at the result (the default
+  // instead of a full recording). GET /runs/:id/snapshots/:n.
+  snapshots?: RunSnapshot[];
   // Secret in the end-user window link; only ever returned to the owner.
   sessionKey?: string | null;
+}
+
+export interface RunSnapshot {
+  n: number;
+  label: string;
+  stepOrder?: number;
+  at: string;
 }
 
 // A file the run downloaded (e.g. the ABHA card).
