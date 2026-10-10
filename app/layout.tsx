@@ -3,6 +3,7 @@ import { Space_Grotesk, Inter, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/lib/auth-context';
 import { RailNav } from '@/components/RailNav';
+import { AttentionAlert } from '@/components/AttentionAlert';
 
 const spaceGrotesk = Space_Grotesk({
   subsets: ['latin'],
@@ -22,6 +23,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`${spaceGrotesk.variable} ${inter.variable} ${jbMono.variable}`}>
       <body>
         <AuthProvider>
+          <AttentionAlert />
           <div className="flex min-h-screen">
             <RailNav />
             <main className="flex-1 min-w-0">{children}</main>

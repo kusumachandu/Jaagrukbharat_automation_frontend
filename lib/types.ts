@@ -181,6 +181,39 @@ export interface Run {
   sessionKey?: string | null;
 }
 
+// Run-from-a-sheet (GET /batches, GET /batches/:id).
+export interface BatchSummary {
+  _id: string;
+  fileName: string;
+  workflowId: string;
+  createdAt: string;
+  rows: number;
+}
+
+export interface BatchRowProgress {
+  rowNo: number;
+  ref: string;
+  shown: Record<string, string>;
+  runId: string | null;
+  // a RunStatus, or "skipped" when no run was started for the row
+  status: string;
+  verdict: string | null;
+  tone: ResultTone | null;
+  note: string | null;
+}
+
+export interface BatchProgress {
+  _id: string;
+  fileName: string;
+  workflowId: string;
+  total: number;
+  done: number;
+  failed: number;
+  skipped: number;
+  finished: boolean;
+  rows: BatchRowProgress[];
+}
+
 export interface RunSnapshot {
   n: number;
   label: string;

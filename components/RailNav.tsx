@@ -44,6 +44,12 @@ export function RailNav() {
             <circle cx="12" cy="10.5" r="1.6" fill="currentColor" />
           </svg>
         </NavItem>
+        <NavItem href="/batches" label="Run from a sheet" active={!!pathname?.startsWith('/batches')}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <rect x="4" y="3" width="16" height="18" rx="2" stroke="currentColor" strokeWidth="1.6" />
+            <path d="M4 9h16M4 15h16M10 3v18" stroke="currentColor" strokeWidth="1.6" />
+          </svg>
+        </NavItem>
       </div>
 
       <div className="mt-auto flex flex-col items-center gap-2">
