@@ -8,7 +8,7 @@ import { api } from "@/lib/api";
 import { InterventionType, RunListItem } from "@/lib/types";
 
 // Fires the moment any run needs a person: a banner pinned to the top of every
-// operator page, a siren (repeating until the run is picked up), a flashing tab
+// operator page, a short chime (once per new request), a flashing tab
 // title and — if allowed — a desktop notification for when this tab is hidden.
 //
 // Browsers only let a page make sound after the person has interacted with it
@@ -16,7 +16,6 @@ import { InterventionType, RunListItem } from "@/lib/types";
 // banner shows an "Enable sound" button.
 
 const POLL_MS = 4000;
-const SIREN_REPEAT_MS = 8000;
 const MUTE_KEY = "autoflow_alert_muted";
 
 function wants(run: RunListItem): string {
@@ -78,29 +77,27 @@ export function AttentionAlert() {
     };
   }, [hidden, unlock]);
 
-  // Two-tone rising/falling siren, ~2.4s.
-  const siren = useCallback(() => {
+  // A short, soft two-note chime (~0.6s) — a notification, not an alarm.
+  const chime = useCallback(() => {
     const ctx = audio();
     if (!ctx || ctx.state !== "running") {
       setSoundReady(false);
       return;
     }
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = "sawtooth";
     const t0 = ctx.currentTime;
-    for (let i = 0; i < 3; i++) {
-      osc.frequency.setValueAtTime(600, t0 + i * 0.8);
-      osc.frequency.linearRampToValueAtTime(1100, t0 + i * 0.8 + 0.4);
-      osc.frequency.linearRampToValueAtTime(600, t0 + i * 0.8 + 0.8);
-    }
-    gain.gain.setValueAtTime(0.0001, t0);
-    gain.gain.exponentialRampToValueAtTime(0.25, t0 + 0.05);
-    gain.gain.setValueAtTime(0.25, t0 + 2.3);
-    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 2.4);
-    osc.connect(gain).connect(ctx.destination);
-    osc.start(t0);
-    osc.stop(t0 + 2.5);
+    [660, 880].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      const start = t0 + i * 0.18;
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(0.12, start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.4);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(start);
+      osc.stop(start + 0.45);
+    });
   }, [audio]);
 
   // --- polling ---------------------------------------------------------
@@ -120,7 +117,7 @@ export function AttentionAlert() {
         const fresh = now.filter((r) => !seen.current.has(r._id));
         fresh.forEach((r) => seen.current.add(r._id));
         if (fresh.length > 0) {
-          if (!muted) siren();
+          if (!muted) chime();
           notify(fresh[0], fresh.length);
         }
       } catch {
@@ -133,16 +130,9 @@ export function AttentionAlert() {
       stop = true;
       clearInterval(t);
     };
-  }, [hidden, muted, siren]);
+  }, [hidden, muted, chime]);
 
   const open = waiting.filter((r) => !dismissed.has(r._id));
-
-  // Keep sounding while something unattended is still waiting.
-  useEffect(() => {
-    if (hidden || muted || open.length === 0) return;
-    const t = setInterval(siren, SIREN_REPEAT_MS);
-    return () => clearInterval(t);
-  }, [hidden, muted, open.length, siren]);
 
   // Flash the tab title so it stands out among other tabs.
   useEffect(() => {
@@ -199,7 +189,7 @@ export function AttentionAlert() {
         {!soundReady && !muted && (
           <button
             onClick={() => {
-              void unlock().then(siren);
+              void unlock().then(chime);
             }}
             className="px-2 py-1 rounded bg-white/20 hover:bg-white/30 text-xs font-mono"
           >

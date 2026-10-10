@@ -15,6 +15,7 @@ export default function BatchesPage() {
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [workflowId, setWorkflowId] = useState("");
   const [refColumn, setRefColumn] = useState("Service Request ID");
+  const [carryColumns, setCarryColumns] = useState("Customer Name, Customer Contact");
   const [allowManual, setAllowManual] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [starting, setStarting] = useState(false);
@@ -66,6 +67,7 @@ export default function BatchesPage() {
       const form = new FormData();
       form.append("file", file);
       if (refColumn.trim()) form.append("refColumn", refColumn.trim());
+      if (carryColumns.trim()) form.append("carryColumns", carryColumns.trim());
       if (allowManual) form.append("allowManualCaptcha", "true");
       const token = getToken();
       const res = await fetch(`${API_BASE}/workflows/${workflowId}/batches`, {
@@ -125,6 +127,15 @@ export default function BatchesPage() {
             />
           </label>
         </div>
+        <label className="block text-xs font-mono text-text-muted mb-3">
+          Other columns to copy into the results (comma-separated)
+          <input
+            value={carryColumns}
+            onChange={(e) => setCarryColumns(e.target.value)}
+            placeholder="e.g. Customer Name, Customer Contact"
+            className="input mt-1 w-full"
+          />
+        </label>
         <div className="mb-3">
           <FileDropzone
             file={file}
@@ -182,7 +193,14 @@ export default function BatchesPage() {
                   <tr>
                     <th className="px-3 py-2">Row</th>
                     <th className="px-3 py-2">Reference</th>
+                    {batch.carryColumns.map((c) => (
+                      <th key={c} className="px-3 py-2">
+                        {c}
+                      </th>
+                    ))}
                     <th className="px-3 py-2">Input</th>
+                    <th className="px-3 py-2 text-right">Challans</th>
+                    <th className="px-3 py-2 text-right">Total amount</th>
                     <th className="px-3 py-2">Status</th>
                     <th className="px-3 py-2">Result</th>
                   </tr>
@@ -192,7 +210,18 @@ export default function BatchesPage() {
                     <tr key={r.rowNo} className="border-t border-ink-line">
                       <td className="px-3 py-1.5">{r.rowNo}</td>
                       <td className="px-3 py-1.5">{r.ref}</td>
+                      {batch.carryColumns.map((c) => (
+                        <td key={c} className="px-3 py-1.5">
+                          {r.carry?.[c] ?? ""}
+                        </td>
+                      ))}
                       <td className="px-3 py-1.5">{Object.values(r.shown).join(" ")}</td>
+                      <td className="px-3 py-1.5 text-right">{r.challans ?? "—"}</td>
+                      <td className="px-3 py-1.5 text-right">
+                        {r.totalAmount === null
+                          ? "—"
+                          : r.totalAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                      </td>
                       <td className="px-3 py-1.5">
                         <span
                           className={

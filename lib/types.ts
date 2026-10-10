@@ -194,11 +194,15 @@ export interface BatchRowProgress {
   rowNo: number;
   ref: string;
   shown: Record<string, string>;
+  carry: Record<string, string>;
   runId: string | null;
   // a RunStatus, or "skipped" when no run was started for the row
   status: string;
   verdict: string | null;
   tone: ResultTone | null;
+  // From the finished run's challan table; null until a run has finished.
+  challans: number | null;
+  totalAmount: number | null;
   note: string | null;
 }
 
@@ -206,6 +210,8 @@ export interface BatchProgress {
   _id: string;
   fileName: string;
   workflowId: string;
+  // The extra sheet columns carried into each row (e.g. Customer Name).
+  carryColumns: string[];
   total: number;
   done: number;
   failed: number;
