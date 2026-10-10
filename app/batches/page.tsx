@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { PageHeader } from "@/components/PageHeader";
+import { FileDropzone } from "@/components/FileDropzone";
 import { API_BASE, ApiError, api, downloadFile, getToken } from "@/lib/api";
 import type { BatchProgress, BatchSummary, Workflow } from "@/lib/types";
 
@@ -20,7 +21,6 @@ export default function BatchesPage() {
   const [error, setError] = useState<string | null>(null);
   const [batch, setBatch] = useState<BatchProgress | null>(null);
   const [recent, setRecent] = useState<BatchSummary[]>([]);
-  const fileInput = useRef<HTMLInputElement>(null);
 
   const loadRecent = useCallback(async () => {
     try {
@@ -80,7 +80,6 @@ export default function BatchesPage() {
       }
       setBatch((await res.json()) as BatchProgress);
       setFile(null);
-      if (fileInput.current) fileInput.current.value = "";
       void loadRecent();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not start the batch");
@@ -126,28 +125,30 @@ export default function BatchesPage() {
             />
           </label>
         </div>
-        <div className="flex flex-wrap items-center gap-3 mb-2">
-          <input
-            ref={fileInput}
-            type="file"
+        <div className="mb-3">
+          <FileDropzone
+            file={file}
+            onFile={setFile}
             accept=".xlsx"
-            data-testid="batch-file"
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            className="text-sm text-text-muted"
+            maxBytes={5 * 1024 * 1024}
+            hint=".xlsx spreadsheet · up to 5 MB · first row = column names"
+            testId="batch-file"
           />
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <label className="flex items-center gap-2 text-xs text-text-muted">
+            <input type="checkbox" checked={allowManual} onChange={(e) => setAllowManual(e.target.checked)} />
+            Start even if captchas have to be typed by a person
+          </label>
           <button
             onClick={start}
             disabled={!file || !workflowId || starting}
             data-testid="batch-start"
-            className="bg-signal text-ink font-semibold rounded-md px-4 py-1.5 text-sm disabled:opacity-40"
+            className="bg-signal text-ink font-semibold rounded-md px-5 py-2 text-sm disabled:opacity-40"
           >
             {starting ? "Reading sheet…" : "Start batch"}
           </button>
         </div>
-        <label className="flex items-center gap-2 text-xs text-text-muted mb-4">
-          <input type="checkbox" checked={allowManual} onChange={(e) => setAllowManual(e.target.checked)} />
-          Start even if captchas have to be typed by a person
-        </label>
         {error && <p className="text-danger text-sm mb-4">{error}</p>}
 
         {batch && (
