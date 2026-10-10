@@ -19,7 +19,7 @@ export function RailNav() {
   const isSessions = pathname?.startsWith('/sessions');
 
   return (
-    <nav className="w-16 shrink-0 border-r border-ink-line bg-ink-panel flex flex-col items-center py-4 gap-6">
+    <nav className="w-16 shrink-0 h-screen overflow-y-auto border-r border-ink-line bg-ink-panel flex flex-col items-center py-4 gap-6">
       <Link
         href="/workflows"
         className="w-8 h-8 rounded-md bg-signal/15 border border-signal/40 flex items-center justify-center"

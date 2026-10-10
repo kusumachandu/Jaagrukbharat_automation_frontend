@@ -24,9 +24,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <AuthProvider>
           <AttentionAlert />
-          <div className="flex min-h-screen">
+          <div className="flex h-screen overflow-hidden">
             <RailNav />
-            <main className="flex-1 min-w-0">{children}</main>
+            <main className="flex-1 min-w-0 h-screen overflow-y-auto">{children}</main>
           </div>
         </AuthProvider>
       </body>
