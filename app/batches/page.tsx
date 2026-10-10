@@ -58,6 +58,15 @@ export default function BatchesPage() {
     return () => clearInterval(t);
   }, [batchId, done]);
 
+  async function retryRow(runId: string) {
+    try {
+      await api.post(`/runs/${runId}/retry`);
+      if (batch) setBatch(await api.get<BatchProgress>(`/batches/${batch._id}`));
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Could not retry that row");
+    }
+  }
+
   async function start() {
     if (!file || !workflowId) return;
     setStarting(true);
@@ -239,9 +248,19 @@ export default function BatchesPage() {
                       </td>
                       <td className="px-3 py-1.5">
                         {r.runId ? (
-                          <Link href={`/runs/${r.runId}`} className="hover:text-signal">
-                            {r.verdict ?? r.note ?? "open"}
-                          </Link>
+                          <span className="flex items-center gap-2">
+                            <Link href={`/runs/${r.runId}`} className="hover:text-signal">
+                              {r.verdict ?? r.note ?? "open"}
+                            </Link>
+                            {(r.status === "failed" || r.status === "cancelled") && (
+                              <button
+                                onClick={() => retryRow(r.runId!)}
+                                className="rounded border border-ink-line px-2 py-0.5 text-text-muted hover:text-signal hover:border-signal/40"
+                              >
+                                Retry
+                              </button>
+                            )}
+                          </span>
                         ) : (
                           <span className="text-text-muted">{r.note}</span>
                         )}

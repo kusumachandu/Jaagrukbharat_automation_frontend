@@ -41,6 +41,7 @@ export default function SessionsPage() {
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
   const [copied, setCopied] = useState<string | null>(null);
+  const [retrying, setRetrying] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -57,6 +58,19 @@ export default function SessionsPage() {
     const t = setInterval(load, 4000);
     return () => clearInterval(t);
   }, [user, load]);
+
+  async function retry(run: RunListItem) {
+    setRetrying(run._id);
+    try {
+      await api.post(`/runs/${run._id}/retry`);
+      await load(); // the new run shows up at the top
+      setError(null);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Could not retry the run");
+    } finally {
+      setRetrying(null);
+    }
+  }
 
   async function copyLink(run: RunListItem) {
     const url = windowUrl(run);
@@ -185,6 +199,18 @@ export default function SessionsPage() {
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">
+                  {(run.status === RunStatus.FAILED || run.status === RunStatus.CANCELLED) && (
+                    <button
+                      type="button"
+                      data-testid="retry-run"
+                      onClick={() => retry(run)}
+                      disabled={retrying === run._id}
+                      title="Start a new run with the same details"
+                      className="btn-ghost text-xs hover:text-signal hover:border-signal/40 disabled:opacity-40"
+                    >
+                      {retrying === run._id ? "Retrying…" : "Retry"}
+                    </button>
+                  )}
                   <button
                     type="button"
                     data-testid="copy-link"

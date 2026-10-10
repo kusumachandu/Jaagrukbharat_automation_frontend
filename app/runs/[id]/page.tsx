@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -37,7 +38,9 @@ export default function RunDetailPage({ params }: { params: { id: string } }) {
   const [logs, setLogs] = useState<ActionLog[]>([]);
   const [intervention, setIntervention] = useState<Intervention | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
   const [cancelling, setCancelling] = useState(false);
+  const [retrying, setRetrying] = useState(false);
   const [summary, setSummary] = useState<RunSummary | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
   const [clearingSignIn, setClearingSignIn] = useState(false);
@@ -146,6 +149,18 @@ export default function RunDetailPage({ params }: { params: { id: string } }) {
     }
   }
 
+  // A fresh run with the same inputs; opens it.
+  async function retry() {
+    setRetrying(true);
+    try {
+      const fresh = await api.post<Run>(`/runs/${params.id}/retry`);
+      router.push(`/runs/${fresh._id}`);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Could not retry the run");
+      setRetrying(false);
+    }
+  }
+
   async function cancel() {
     setCancelling(true);
     try {
@@ -205,6 +220,17 @@ export default function RunDetailPage({ params }: { params: { id: string } }) {
                 All runs
               </Link>
             )}
+            {run &&
+              (run.status === RunStatus.FAILED || run.status === RunStatus.CANCELLED) && (
+                <button
+                  onClick={retry}
+                  disabled={retrying}
+                  data-testid="retry-run"
+                  className="btn-ghost hover:text-signal hover:border-signal/40 disabled:opacity-40"
+                >
+                  {retrying ? "Retrying…" : "Retry run"}
+                </button>
+              )}
             {run && ACTIVE_STATUSES.has(run.status) && (
               <button
                 onClick={cancel}
