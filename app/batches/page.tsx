@@ -183,12 +183,21 @@ export default function BatchesPage() {
                   {batch.skipped > 0 && `, ${batch.skipped} skipped`}
                 </span>
               </div>
-              <button
-                onClick={() => downloadFile(`/batches/${batch._id}/results.xlsx`, "results.xlsx")}
-                className="btn-ghost"
-              >
-                Download results (.xlsx)
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => downloadFile(`/batches/${batch._id}/broadcast.xlsx`, "broadcast.xlsx")}
+                  title="Customers with unpaid challans — upload to Gallabox's broadcast screen"
+                  className="btn-ghost"
+                >
+                  Broadcast list (.xlsx)
+                </button>
+                <button
+                  onClick={() => downloadFile(`/batches/${batch._id}/results.xlsx`, "results.xlsx")}
+                  className="btn-ghost"
+                >
+                  Download results (.xlsx)
+                </button>
+              </div>
             </div>
             <div className="h-1.5 rounded bg-ink-raised mb-3 overflow-hidden">
               <div
@@ -210,6 +219,8 @@ export default function BatchesPage() {
                     <th className="px-3 py-2">Input</th>
                     <th className="px-3 py-2 text-right">Challans</th>
                     <th className="px-3 py-2 text-right">Total amount</th>
+                    <th className="px-3 py-2 text-right" title="Pending challans + convenience fee">To pay</th>
+                    <th className="px-3 py-2">Payment</th>
                     <th className="px-3 py-2">Status</th>
                     <th className="px-3 py-2">Result</th>
                   </tr>
@@ -230,6 +241,23 @@ export default function BatchesPage() {
                         {r.totalAmount === null
                           ? "—"
                           : r.totalAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                      </td>
+                      <td
+                        className="px-3 py-1.5 text-right"
+                        title={
+                          r.payableAmount === null
+                            ? undefined
+                            : `Pending challans ${r.payableAmount} + fee ${r.fee}`
+                        }
+                      >
+                        {r.toPay === null
+                          ? "—"
+                          : r.toPay.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                      </td>
+                      <td className="px-3 py-1.5">
+                        <span className={r.paymentStatus === "paid" ? "text-ok" : "text-text-muted"}>
+                          {r.paymentStatus ?? "—"}
+                        </span>
                       </td>
                       <td className="px-3 py-1.5">
                         <span

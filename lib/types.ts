@@ -203,6 +203,14 @@ export interface BatchRowProgress {
   // From the finished run's challan table; null until a run has finished.
   challans: number | null;
   totalAmount: number | null;
+  // This customer's own pending challans, the fee on them and what they would
+  // pay (pending + fee). null until the run has finished.
+  payableCount: number | null;
+  payableAmount: number | null;
+  fee: number | null;
+  toPay: number | null;
+  // Status of the payment link, once the customer has been sent one.
+  paymentStatus: "active" | "paid" | "partial" | "expired" | "cancelled" | null;
   note: string | null;
 }
 
