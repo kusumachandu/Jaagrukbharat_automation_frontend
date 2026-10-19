@@ -8,12 +8,14 @@ import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { LogConsole } from "@/components/LogConsole";
 import { InterventionPanel } from "@/components/InterventionPanel";
+import { ControlPanel, ControlState } from "@/components/ControlPanel";
 import { WorkflowCanvas } from "@/components/canvas/WorkflowCanvas";
 import { api, ApiError } from "@/lib/api";
 import {
   ActionLog,
   ActionResult,
   Intervention,
+  InterventionType,
   ResolutionAction,
   Run,
   RunStatus,
@@ -31,12 +33,15 @@ const ACTIVE_STATUSES = new Set([
   RunStatus.PAUSED,
 ]);
 
+const NO_CONTROL: ControlState = { controlled: false, requested: false, viewport: null };
+
 export default function RunDetailPage({ params }: { params: { id: string } }) {
   const { user, loading } = useRequireAuth();
   const [run, setRun] = useState<Run | null>(null);
   const [workflow, setWorkflow] = useState<Workflow | null>(null);
   const [logs, setLogs] = useState<ActionLog[]>([]);
   const [intervention, setIntervention] = useState<Intervention | null>(null);
+  const [control, setControl] = useState<ControlState>(NO_CONTROL);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const [cancelling, setCancelling] = useState(false);
@@ -76,6 +81,17 @@ export default function RunDetailPage({ params }: { params: { id: string } }) {
       } else {
         setIntervention(null);
       }
+
+      // Who has the browser: only meaningful while the run is going or paused.
+      if (r.status === RunStatus.RUNNING || r.status === RunStatus.PAUSED) {
+        try {
+          setControl(await api.get<ControlState>(`/runs/${params.id}/control`));
+        } catch {
+          setControl(NO_CONTROL);
+        }
+      } else {
+        setControl(NO_CONTROL);
+      }
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Could not load run");
     }
@@ -93,6 +109,13 @@ export default function RunDetailPage({ params }: { params: { id: string } }) {
     }, 4000);
     return () => clearInterval(interval);
   }, [user, poll]);
+
+  // While control is requested or held, check more often so the panel reacts quickly.
+  useEffect(() => {
+    if (!user || !(control.requested || control.controlled)) return;
+    const interval = setInterval(poll, 1500);
+    return () => clearInterval(interval);
+  }, [user, control.requested, control.controlled, poll]);
 
   // Once a run has ended, fetch its plain-language summary (what happened,
   // files, why it failed). Re-fetched if the status changes.
@@ -117,6 +140,45 @@ export default function RunDetailPage({ params }: { params: { id: string } }) {
       setTimeout(() => setLinkCopied(false), 2000);
     } catch {
       window.prompt("Copy this link:", url);
+    }
+  }
+
+  async function takeControl() {
+    try {
+      await api.post(`/runs/${params.id}/control/take`);
+      await poll();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Could not take control");
+    }
+  }
+
+  async function releaseControl() {
+    try {
+      await api.post(`/runs/${params.id}/control/release`);
+      await poll();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Could not release control");
+    }
+  }
+
+  // Open an address in the browser you are controlling.
+  async function gotoUrl(url: string) {
+    try {
+      await api.post(`/runs/${params.id}/control/goto`, { url });
+      await poll();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Could not open that address");
+    }
+  }
+
+  // Hand the browser back; the automation carries on from the last step you did ("auto") or a chosen step.
+  async function resumeFrom(order: number | "auto") {
+    try {
+      await api.post(`/runs/${params.id}/resume`, { action: ResolutionAction.RESUME, value: String(order) });
+      setControl((c) => ({ ...c, controlled: false }));
+      await poll();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Could not resume the automation");
     }
   }
 
@@ -303,6 +365,12 @@ export default function RunDetailPage({ params }: { params: { id: string } }) {
               <LiveBrowserView
                 runId={params.id}
                 active={ACTIVE_STATUSES.has(run.status)}
+                controlling={control.controlled}
+                viewport={control.viewport}
+                onControlEnded={() => {
+                  setControl((c) => ({ ...c, controlled: false }));
+                  poll();
+                }}
               />
             )}
             {view === "snapshots" && run?.snapshots && (
@@ -363,7 +431,20 @@ export default function RunDetailPage({ params }: { params: { id: string } }) {
             </div>
           )}
 
-          {intervention && (
+          {run && workflow && (run.status === RunStatus.RUNNING || run.status === RunStatus.PAUSED) && (
+            <ControlPanel
+              status={run.status}
+              control={control}
+              intervention={intervention}
+              steps={workflow.steps}
+              onTake={takeControl}
+              onRelease={releaseControl}
+              onResume={resumeFrom}
+              onGoto={gotoUrl}
+            />
+          )}
+
+          {intervention && intervention.type !== InterventionType.HUMAN_CONTROL && (
             <InterventionPanel
               intervention={intervention}
               step={workflow?.steps.find((s) => s.order === intervention.stepOrder)}

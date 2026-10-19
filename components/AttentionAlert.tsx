@@ -108,7 +108,10 @@ export function AttentionAlert() {
       try {
         const runs = await api.get<RunListItem[]>("/runs?limit=100");
         if (stop) return;
-        const now = runs.filter((r) => r.awaiting !== null);
+        // A person who took the browser themselves does not need an alert about it.
+        const now = runs.filter(
+          (r) => r.awaiting !== null && r.awaiting !== InterventionType.HUMAN_CONTROL
+        );
         setWaiting(now);
         // A run that stopped waiting can alert again if it ever waits again.
         const ids = new Set(now.map((r) => r._id));
