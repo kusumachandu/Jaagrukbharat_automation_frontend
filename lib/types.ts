@@ -352,6 +352,8 @@ export interface ActionLog {
 export enum InterventionType {
   MANUAL_TAKEOVER = "manual_takeover",
   INPUT_REQUIRED = "input_required",
+  // A person asked to take over the browser; the run waits for them to hand it back.
+  HUMAN_CONTROL = "human_control",
 }
 
 export enum ResolutionAction {
@@ -359,6 +361,8 @@ export enum ResolutionAction {
   PROVIDE_SELECTOR = "provide_selector",
   SKIP = "skip",
   ABORT = "abort",
+  // "I did it by hand — carry on"; value = the step order to continue from.
+  RESUME = "resume",
 }
 
 export interface Intervention {
