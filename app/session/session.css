@@ -1,23 +1,25 @@
-/* End-user session window, in Jaagruk Bharat's colours (maroon brand, orange
-   for "your turn", green for done). Scoped under .jbs so none of it leaks into
-   the operator app, which has its own dark theme. Light by default like the
-   main Jaagruk Bharat site; follows the device's dark mode. */
+/* The customer pages (the Start page and the session window), in the colours of the main Jaagruk Bharat
+   site: soft mint background, deep green text and buttons, orange only where the person's attention is needed.
+   Deliberately no black and no red as the main colour (people read those as "danger" and drop off), and always
+   light, even when the phone is in dark mode. Red is kept for real errors only. Scoped under .jbs so none of it
+   leaks into the operator app, which has its own dark theme. */
 
 .jbs {
-  --bg: #f6f7f9;
+  color-scheme: light;
+  --bg: #edf9f4;
   --card: #ffffff;
-  --line: #e3e7ec;
-  --tx: #081f32;
-  --mut: #5b6b7a;
-  --brand: #a02829;
+  --line: #d3e6dc;
+  --tx: #143222;
+  --mut: #4f6658;
+  --brand: #1b5e2f;
   --brand-ink: #ffffff;
-  --turn: #b85f0f;
-  --turnbg: #fdf1e6;
-  --turnline: #ef903c;
-  --ok: #0e8244;
-  --okbg: #e7f4ec;
-  --bad: #c62828;
-  --badbg: #fdecec;
+  --turn: #b4540a;
+  --turnbg: #fff4e8;
+  --turnline: #f0a35a;
+  --ok: #1b7a43;
+  --okbg: #e3f4ea;
+  --bad: #b3382c;
+  --badbg: #fdeeea;
   --in: #ffffff;
 
   min-height: 100vh;
@@ -28,26 +30,6 @@
   padding-top: env(safe-area-inset-top, 0px);
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
-@media (prefers-color-scheme: dark) {
-  .jbs {
-    --bg: #0d1117;
-    --card: #151b23;
-    --line: #243040;
-    --tx: #e8edf3;
-    --mut: #8b98a8;
-    --brand: #c23b3c;
-    --brand-ink: #ffffff;
-    --turn: #f0a24e;
-    --turnbg: #2b2113;
-    --turnline: #f0a24e;
-    --ok: #4cc38a;
-    --okbg: #12281f;
-    --bad: #f07171;
-    --badbg: #2d1515;
-    --in: #0d1117;
-  }
-}
-
 .jbs *, .jbs *::before, .jbs *::after { box-sizing: border-box; }
 .jbs .wrap { max-width: 560px; margin: 0 auto; padding: 16px 16px 32px; }
 
