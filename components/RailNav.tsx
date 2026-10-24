@@ -12,7 +12,8 @@ export function RailNav() {
   // The end-user session window is a standalone page for someone who isn't an
   // operator — never show them the operator's navigation, even if they happen
   // to be signed in on the same browser.
-  if (pathname?.startsWith('/session/')) return null;
+  // The customer's Start page (/start/<token>) is the same kind of standalone page.
+  if (pathname?.startsWith('/session/') || pathname?.startsWith('/start/')) return null;
   if (!user) return null;
 
   const isWorkflows = pathname?.startsWith('/workflows');

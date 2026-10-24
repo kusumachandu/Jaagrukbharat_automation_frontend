@@ -36,7 +36,11 @@ export function AttentionAlert() {
   const baseTitle = useRef<string>("");
 
   const hidden =
-    !user || pathname === "/login" || pathname === "/signup" || pathname?.startsWith("/session/");
+    !user ||
+    pathname === "/login" ||
+    pathname === "/signup" ||
+    pathname?.startsWith("/session/") ||
+    pathname?.startsWith("/start/");
 
   useEffect(() => {
     try {
