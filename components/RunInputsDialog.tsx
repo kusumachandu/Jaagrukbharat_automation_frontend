@@ -8,6 +8,13 @@ interface RunInputsDialogProps {
   submitting: boolean;
   onSubmit: (values: Record<string, string>) => void;
   onCancel: () => void;
+  // Edit-and-retry: start from what the run had. Sensitive values are never sent to the browser, so
+  // those in keepKeys show "unchanged" and are kept when left blank.
+  initialValues?: Record<string, string>;
+  keepKeys?: string[];
+  title?: string;
+  description?: string;
+  submitLabel?: string;
 }
 
 export function RunInputsDialog({
@@ -15,8 +22,13 @@ export function RunInputsDialog({
   submitting,
   onSubmit,
   onCancel,
+  initialValues,
+  keepKeys = [],
+  title = "Run this workflow",
+  description = "Fill in the variables this workflow needs before it starts.",
+  submitLabel = "Start run",
 }: RunInputsDialogProps) {
-  const [values, setValues] = useState<Record<string, string>>({});
+  const [values, setValues] = useState<Record<string, string>>(initialValues ?? {});
   const [error, setError] = useState<string | null>(null);
 
   function handleSubmit(e: FormEvent) {
@@ -25,7 +37,7 @@ export function RunInputsDialog({
     for (const i of inputs) trimmed[i.key] = (values[i.key] ?? "").trim();
 
     const missing = inputs.filter(
-      (i) => i.required !== false && !trimmed[i.key],
+      (i) => i.required !== false && !trimmed[i.key] && !keepKeys.includes(i.key),
     );
     if (missing.length > 0) {
       setError(
@@ -58,14 +70,15 @@ export function RunInputsDialog({
       <div className="w-full max-w-sm rounded-lg border border-ink-line bg-ink-panel shadow-panel">
         <div className="px-5 py-4 border-b border-ink-line">
           <div className="font-display font-medium text-text-primary">
-            Run this workflow
+            {title}
           </div>
-          <p className="text-xs text-text-muted mt-0.5">
-            Fill in the variables this workflow needs before it starts.
-          </p>
+          <p className="text-xs text-text-muted mt-0.5">{description}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="px-5 py-4 flex flex-col gap-3">
+          {/* One scrollbar for the fields, at a fixed maximum height: the title and the
+              Start / Cancel buttons stay in view however many variables there are. */}
+          <div className="flex flex-col gap-3 max-h-[55vh] overflow-y-auto pr-2">
           {inputs.map((input) => (
             <label key={input.key} className="flex flex-col gap-1.5">
               <span className="text-xs font-mono uppercase tracking-wider text-text-dim">
@@ -74,20 +87,44 @@ export function RunInputsDialog({
                   <span className="text-danger"> *</span>
                 )}
               </span>
-              <input
-                type={input.sensitive ? "password" : "text"}
-                className="input"
-                value={values[input.key] ?? ""}
-                onChange={(e) =>
-                  setValues((prev) => ({ ...prev, [input.key]: e.target.value }))
-                }
-                placeholder={input.key}
-                autoFocus={inputs[0]?.key === input.key}
-              />
+              {input.options && input.options.length > 0 ? (
+                // A variable with choices is a dropdown, so nobody has to remember the exact words.
+                <select
+                  className="input"
+                  value={values[input.key] ?? ""}
+                  onChange={(e) =>
+                    setValues((prev) => ({ ...prev, [input.key]: e.target.value }))
+                  }
+                  autoFocus={inputs[0]?.key === input.key}
+                >
+                  <option value="">
+                    {input.required !== false ? "Select…" : "— none —"}
+                  </option>
+                  {input.options.map((o) => (
+                    <option key={o} value={o}>
+                      {o}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type={input.sensitive ? "password" : "text"}
+                  className="input"
+                  value={values[input.key] ?? ""}
+                  onChange={(e) =>
+                    setValues((prev) => ({ ...prev, [input.key]: e.target.value }))
+                  }
+                  placeholder={
+                    keepKeys.includes(input.key) ? "•••• unchanged — type to replace" : input.key
+                  }
+                  autoFocus={inputs[0]?.key === input.key}
+                />
+              )}
             </label>
           ))}
+          </div>
 
-          {error && <p className="text-danger text-xs">{error}</p>}
+          {error &&<p className="text-danger text-xs">{error}</p>}
 
           <div className="flex justify-end gap-2 mt-2">
             <button
@@ -103,7 +140,7 @@ export function RunInputsDialog({
               disabled={submitting}
               className="rounded-md bg-signal text-ink font-semibold text-sm px-4 py-1.5 hover:bg-signal-glow transition-colors disabled:opacity-50"
             >
-              {submitting ? "Starting…" : "Start run"}
+              {submitting ? "Starting…" : submitLabel}
             </button>
           </div>
         </form>

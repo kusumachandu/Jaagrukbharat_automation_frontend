@@ -42,6 +42,35 @@ body {
   scrollbar-width: thin;
 }
 
+/* A scrollbar that stays out of the way: invisible until the pointer is over (or focus is inside) that container,
+   then a slim thumb. Put it on any element that scrolls (together with overflow-y-auto / overflow-auto). */
+.scroll-hover {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+  scrollbar-gutter: stable;
+}
+.scroll-hover:hover,
+.scroll-hover:focus-within {
+  scrollbar-color: rgba(148, 163, 184, 0.45) transparent;
+}
+/* Browsers without scrollbar-color (older Safari): the same idea with the WebKit pseudo-elements. */
+@supports not (scrollbar-color: auto) {
+  .scroll-hover::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .scroll-hover::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scroll-hover::-webkit-scrollbar-thumb {
+    background: transparent;
+    border-radius: 8px;
+  }
+  .scroll-hover:hover::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.45);
+  }
+}
+
 /* Focus visibility — kept deliberately, never suppressed */
 :focus-visible {
   outline: 2px solid #e8a33d;

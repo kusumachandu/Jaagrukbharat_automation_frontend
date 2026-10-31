@@ -62,6 +62,70 @@ export default function SessionWindow({
     };
   }, [active, load]);
 
+  // Keeping the person here while the website is slow (the final OTP can take 5–10 minutes):
+  // a warning before the tab is closed, the tab title and a short beep when it's their turn,
+  // and the phone screen kept awake. All best-effort — each is a browser nicety, none is required.
+  const inProgress = !!view && ACTIVE.has(view.status);
+  const needsYou = inProgress && !!view?.awaiting?.canAnswer;
+
+  useEffect(() => {
+    if (!inProgress) return;
+    const warn = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [inProgress]);
+
+  useEffect(() => {
+    if (!inProgress) return;
+    let lock: { release: () => Promise<void> } | null = null;
+    let cancelled = false;
+    const grab = async () => {
+      try {
+        const wl = (navigator as unknown as { wakeLock?: { request: (t: "screen") => Promise<{ release: () => Promise<void> }> } }).wakeLock;
+        if (wl && document.visibilityState === "visible" && !cancelled) lock = await wl.request("screen");
+      } catch {
+        /* not supported or refused — fine */
+      }
+    };
+    void grab();
+    document.addEventListener("visibilitychange", grab);
+    return () => {
+      cancelled = true;
+      document.removeEventListener("visibilitychange", grab);
+      void lock?.release().catch(() => {});
+    };
+  }, [inProgress]);
+
+  useEffect(() => {
+    if (!needsYou) return;
+    const original = document.title;
+    let on = false;
+    const flash = setInterval(() => {
+      on = !on;
+      document.title = on ? "🔔 Enter your code now" : original;
+    }, 1000);
+    try {
+      const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (Ctx) {
+        const ctx = new Ctx();
+        const osc = ctx.createOscillator();
+        osc.frequency.value = 880;
+        osc.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.25);
+      }
+    } catch {
+      /* the browser may block sound until the page has been touched — fine */
+    }
+    return () => {
+      clearInterval(flash);
+      document.title = original;
+    };
+  }, [needsYou]);
+
   if (problem === "invalid") return <InvalidLink />;
   if (!view) {
     return (
@@ -86,7 +150,10 @@ export default function SessionWindow({
   const pct = summary.stepsTotal > 0 ? Math.round((summary.stepsDone / summary.stepsTotal) * 100) : 0;
   const stepNow = Math.min(summary.stepsDone + 1, summary.stepsTotal);
   const codesTotal = codes ? codes.captcha + codes.otp + codes.other : 0;
-  const pill = pillFor(view.status, yourTurn, onHold);
+  // The steps ran to the end but the application itself is not confirmed (e.g. no registration number came back):
+  // the page must not celebrate.
+  const notConfirmed = finished && summary.outcome === "success" && summary.application?.status === "failed";
+  const pill = notConfirmed ? { cls: "bad", label: "⚠ NOT CONFIRMED" } : pillFor(view.status, yourTurn, onHold);
 
   return (
     <Shell>
@@ -103,7 +170,7 @@ export default function SessionWindow({
 
       <h1 data-testid="window-title">{view.workflowName}</h1>
       <p className="sub" data-testid="window-sub">
-        {subFor(view.status, yourTurn, onHold, view.siteHost)}
+        {notConfirmed ? "We finished the steps, but your application is not confirmed — details below." : subFor(view.status, yourTurn, onHold)}
       </p>
 
       <div aria-live="polite">
@@ -116,6 +183,13 @@ export default function SessionWindow({
               If the website asks for a code, it appears here. If nobody enters it in time, the
               request stops.
             </div>
+          </div>
+        )}
+
+        {!finished && !yourTurn && view.note && (
+          <div data-testid="stage-note" className="note hold">
+            <b>📌 Good to know</b>
+            <div>{view.note}</div>
           </div>
         )}
 
@@ -190,16 +264,43 @@ export default function SessionWindow({
           </div>
         )}
 
+        {/* The application's own outcome, apart from whether the automation ran: for a registration it is a success
+            only once the registration number is in hand. */}
+        {finished && summary.application && summary.application.status !== "cancelled" && (
+          <div
+            data-testid="application-status"
+            data-status={summary.application.status}
+            className={`note ${summary.application.status === "success" ? "ok" : "hold"}`}
+            style={{ marginBottom: 12 }}
+          >
+            <b>
+              Application: {summary.application.status === "success" ? "Successful" : "Not completed"}
+            </b>
+            {summary.application.status === "success" && summary.application.reference && (
+              <div>
+                {summary.application.referenceLabel ?? "Reference"}: <b>{summary.application.reference}</b>
+              </div>
+            )}
+            {summary.application.status === "failed" && summary.application.reason && (
+              <div>{summary.application.reason}</div>
+            )}
+          </div>
+        )}
+
         {finished && summary.outcome === "success" && (
           <div
             data-testid="outcome-success"
             data-result-tone={summary.result?.tone}
-            className={`card hero ${toneClass(summary.result?.tone)}`}
+            className={`card hero ${toneClass(notConfirmed ? "negative" : summary.result?.tone)}`}
           >
-            <h2 data-testid={summary.result ? "run-result" : undefined} data-tone={summary.result?.tone}>
-              {toneGlyph(summary.result?.tone)} {summary.headline}
+            <h2 data-testid={summary.result ? "run-result" : undefined} data-tone={notConfirmed ? "negative" : summary.result?.tone}>
+              {toneGlyph(notConfirmed ? "negative" : summary.result?.tone)} {notConfirmed ? "Application not confirmed" : summary.headline}
             </h2>
-            <p className="sub">All done. You can safely close this window.</p>
+            <p className="sub">
+              {notConfirmed
+                ? "Please check on the official website whether it went through before trying again."
+                : "All done. You can safely close this window."}
+            </p>
 
             {summary.highlights.length > 0 && (
               <table data-testid="result-details">
@@ -250,6 +351,14 @@ export default function SessionWindow({
                 <small>It stopped at: {summary.failure.stepLabel}</small>
                 <p>{summary.failure.reason}</p>
                 <small>{summary.failure.suggestion}</small>
+                {summary.failure.websiteSaid && summary.failure.websiteSaid.length > 0 && (
+                  <div data-testid="website-said" className="note hold" style={{ marginTop: 10 }}>
+                    <b>What the website said</b>
+                    {summary.failure.websiteSaid.map((line, i) => (
+                      <div key={i}>{line}</div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -275,8 +384,7 @@ export default function SessionWindow({
           <h3>Your safety</h3>
           <div className="trust">
             <div>
-              {BRAND_NAME} works on the official website on your behalf
-              {view.siteHost ? ` (${view.siteHost})` : ""}.
+              {BRAND_NAME} works on the official website on your behalf.
             </div>
             <div>This is not a government website.</div>
             <div>Only enter a code for a request you asked {BRAND_NAME} to do.</div>
@@ -358,7 +466,7 @@ function pillFor(status: RunStatus, yourTurn: boolean, onHold: boolean) {
   }
 }
 
-function subFor(status: RunStatus, yourTurn: boolean, onHold: boolean, host?: string) {
+function subFor(status: RunStatus, yourTurn: boolean, onHold: boolean) {
   if (yourTurn) return "We've paused and are waiting for you. Nothing happens until you enter the code below.";
   if (onHold) return "We hit a small snag and our team is looking at it.";
   switch (status) {
@@ -367,13 +475,7 @@ function subFor(status: RunStatus, yourTurn: boolean, onHold: boolean, host?: st
     case RunStatus.FAILED: return "We couldn't finish this request.";
     case RunStatus.CANCELLED: return "This request was cancelled.";
     default:
-      return host ? (
-        <>
-          We&apos;re working on this on the official website (<b>{host}</b>) for you.
-        </>
-      ) : (
-        "We're working on this on the official website for you."
-      );
+      return "We're working on this on the official website for you.";
   }
 }
 

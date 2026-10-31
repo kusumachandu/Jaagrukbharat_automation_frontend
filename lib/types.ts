@@ -56,6 +56,9 @@ export interface DecisionOutcome {
   // Makes this outcome the run's active branch — later steps tagged
   // Step.branch with a *different* value are skipped this run.
   setBranch?: string;
+  // The website said no: end the run as FAILED with the label as the reason (so it can be
+  // edited and retried), instead of as a successful run with a negative answer. Set by scripts.
+  fail?: boolean;
 }
 
 // DECIDE only: look for `text` on the page; found -> ifFound, else ifNotFound.
@@ -66,6 +69,9 @@ export interface Decision {
   scope?: string;
   // How long to keep looking before concluding the text isn't there.
   settleMs?: number;
+  // Not editable in the UI (set by scripts) but must survive a save from the builder.
+  elseText?: string;
+  dismissDialogs?: boolean;
   ifFound: DecisionOutcome;
   ifNotFound: DecisionOutcome;
 }
@@ -104,6 +110,26 @@ export interface Step {
   // for the rejection and let the person try again. Not editable in the UI yet —
   // set by scripts — but must survive a save from the builder.
   rejection?: Rejection;
+  // The fields below are set by scripts, not editable in the builder — but saving from the
+  // builder must carry them through, or it silently strips them from the workflow.
+  // A step that must end with a downloaded file (the ABHA card).
+  expectDownload?: boolean;
+  // A clean-up step (log out), run once after the last step however the run ended.
+  cleanup?: boolean;
+  // Optional step: runs only if this text shows up within onlyIfWaitMs (a dialog that opens sometimes).
+  onlyIfText?: string;
+  onlyIfElseText?: string;
+  onlyIfWaitMs?: number;
+  // Runs only when the run's inputs satisfy this, e.g. "have_plant=Yes", "dic", "!dic".
+  onlyIfInput?: string;
+  // WAIT only: a visible line matching this regex (the website saying no) fails the run at once with it.
+  failIfText?: string;
+  // Shown to the person on their private link while this step is running.
+  customerNote?: string;
+  // WAIT only: known refusals watched for while waiting — the first whose text shows ends the run with its message.
+  failCases?: Array<{ text: string; message: string; suggestion?: string }>;
+  // After the step, wait until this text (a "Please wait…" overlay) is gone.
+  waitGoneText?: string;
 }
 
 export interface Rejection {
@@ -128,10 +154,45 @@ export interface WorkflowInput {
   required?: boolean;
   // Regex the value must satisfy when a run is triggered, e.g. "^\\d{12}$".
   pattern?: string;
+  // Makes the variable a dropdown: the value must be one of these.
+  options?: string[];
+  // Editor only (never sent): what was typed in the "choices" box, so a trailing comma isn't eaten while typing.
+  optionsText?: string;
+}
+
+/** One variable of a finished run, for the edit-and-retry form (GET /runs/:id/inputs). */
+export interface RunInputField extends WorkflowInput {
+  // Whether the run had a value for it — the value itself is only sent for non-sensitive ones.
+  hasValue: boolean;
+  value?: string;
+}
+
+/** "Male, Female, Others" -> ["Male","Female","Others"]; blank -> undefined (free text). */
+export function parseOptions(text: string | undefined): string[] | undefined {
+  const list = (text ?? "")
+    .split(/[,\n]/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return list.length > 0 ? Array.from(new Set(list)) : undefined;
+}
+
+// What makes an application a success, apart from the automation having run (e.g. the Udyam number was read).
+export interface ApplicationRule {
+  referencePattern: string;
+  referenceLabel?: string;
+}
+
+// The application's own outcome (success only once its reference is in hand), separate from the task status.
+export interface ApplicationStatus {
+  status: "success" | "failed" | "cancelled" | "in_progress";
+  reference?: string;
+  referenceLabel?: string;
+  reason?: string;
 }
 
 export interface Workflow {
   _id: string;
+  applicationRule?: ApplicationRule;
   name: string;
   description?: string;
   ownerId: string;
@@ -171,6 +232,9 @@ export interface Run {
   usedSavedSignIn?: boolean;
   // Which path a decide step's setBranch sent this run down, if any.
   activeBranch?: string;
+  // The application's own outcome (set when the workflow has an application rule, e.g. the Udyam number must be
+  // read): separate from `status`, which is only whether the automation ran to the end.
+  application?: ApplicationStatus;
   // A screen recording of the whole run, when one was saved (best-effort;
   // absent on runs from before this existed). GET /runs/:id/recording.
   recording?: { sizeBytes: number; savedAt: string };
@@ -269,6 +333,8 @@ export interface ResultTable {
 }
 
 export interface RunSummary {
+  // Optional: an older backend doesn't send it.
+  application?: ApplicationStatus;
   outcome: "success" | "failed" | "cancelled" | "in_progress";
   headline: string;
   detail: string;
@@ -297,6 +363,9 @@ export interface RunSummary {
     stepLabel: string;
     reason: string;
     suggestion: string;
+    // What the official website itself was showing when the run stopped (its error popup / validation
+    // lines, with PANs, Aadhaar and phone numbers masked).
+    websiteSaid?: string[];
     technicalDetail?: string; // owner view only
   };
 }
@@ -334,6 +403,8 @@ export interface PublicSessionView {
   typicalDurationMs?: { lowMs: number; highMs: number; medianMs: number } | null;
   phases?: PublicPhase[];
   codes?: { captcha: number; otp: number; other: number; answered: number };
+  // Said to the person while the step now running is in progress ("this can take 5–10 minutes").
+  note?: string;
   updatedAt: string;
 }
 

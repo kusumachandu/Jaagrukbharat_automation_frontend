@@ -59,6 +59,11 @@ export function LiveBrowserView({
   const socketRef = useRef<Socket | null>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  // How the picture is sized: "width" fills the panel's width at full size (scroll down for the rest of the
+  // page); "screen" shrinks the whole page to fit the available height. Full screen uses "screen" at first.
+  const [fit, setFit] = useState<"width" | "screen">("width");
+  const [isFull, setIsFull] = useState(false);
   const lastMove = useRef(0);
   const endedCb = useRef(onControlEnded);
   endedCb.current = onControlEnded;
@@ -114,6 +119,22 @@ export function LiveBrowserView({
       clearInterval(interval);
     };
   }, [runId, active, controlling]);
+
+  // Full screen: the whole live view (picture + its buttons) goes full screen; Esc or the button leaves it.
+  useEffect(() => {
+    function onChange() {
+      const full = document.fullscreenElement === rootRef.current;
+      setIsFull(full);
+      setFit(full ? "screen" : "width");
+    }
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
+
+  function toggleFullScreen() {
+    if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
+    else void rootRef.current?.requestFullscreen?.().catch(() => {});
+  }
 
   const send = (input: ControlInput) =>
     socketRef.current?.emit("control:input", { runId, input });
@@ -172,18 +193,48 @@ export function LiveBrowserView({
   }
 
   return (
-    <div className="h-full flex items-center justify-center bg-black/40 relative">
+    <div
+      ref={rootRef}
+      data-testid="live-view"
+      data-fit={fit}
+      data-fullscreen={isFull}
+      className="h-full relative bg-black/40"
+      style={isFull ? { background: "#000" } : undefined}
+    >
       {controlling && (
         <div className="absolute top-2 left-2 z-10 rounded-md bg-signal/90 text-black px-2 py-1 text-[11px] font-mono uppercase tracking-wider">
           You are controlling the browser
         </div>
       )}
+      {frame && (
+        <div className="absolute top-2 right-4 z-10 flex gap-1.5">
+          <button
+            type="button"
+            data-testid="live-fit"
+            onClick={() => setFit((f) => (f === "width" ? "screen" : "width"))}
+            title={fit === "width" ? "Shrink the whole page to fit the panel" : "Show at full size (scroll for the rest)"}
+            className="rounded-md bg-black/65 hover:bg-black/85 text-white px-2.5 py-1 text-[11px] font-mono uppercase tracking-wider"
+          >
+            {fit === "width" ? "Fit page" : "Full size"}
+          </button>
+          <button
+            type="button"
+            data-testid="live-fullscreen"
+            onClick={toggleFullScreen}
+            title={isFull ? "Leave full screen (Esc)" : "Click to view the live browser full screen"}
+            className="rounded-md bg-black/65 hover:bg-black/85 text-white px-2.5 py-1 text-[11px] font-mono uppercase tracking-wider"
+          >
+            {isFull ? "✕ Exit full screen" : "⛶ Full screen"}
+          </button>
+        </div>
+      )}
       {frame ? (
+        <div className={`h-full w-full ${fit === "width" ? "overflow-y-auto overflow-x-hidden scroll-hover" : "flex items-center justify-center"}`}>
         <div
           ref={stageRef}
           data-testid="live-stage"
           tabIndex={controlling ? 0 : -1}
-          className={`h-full w-full flex items-center justify-center outline-none ${
+          className={`outline-none ${fit === "width" ? "w-full" : "h-full w-full flex items-center justify-center"} ${
             controlling ? "cursor-crosshair" : ""
           }`}
           onContextMenu={(e) => controlling && e.preventDefault()}
@@ -229,15 +280,18 @@ export function LiveBrowserView({
             src={frame}
             alt="live browser view"
             draggable={false}
-            className={`max-h-full max-w-full select-none ${
+            className={`select-none ${fit === "width" ? "block w-full h-auto" : "max-h-full max-w-full"} ${
               controlling ? "ring-2 ring-signal" : ""
             }`}
           />
         </div>
+        </div>
       ) : (
-        <span className="text-text-dim font-mono text-xs">
-          {ended ? "browser closed" : "connecting to live view…"}
-        </span>
+        <div className="h-full flex items-center justify-center">
+          <span className="text-text-dim font-mono text-xs">
+            {ended ? "browser closed" : "connecting to live view…"}
+          </span>
+        </div>
       )}
     </div>
   );

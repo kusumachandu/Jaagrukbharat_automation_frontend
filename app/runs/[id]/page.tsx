@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
+import { ApplicationBadge } from "@/components/ApplicationBadge";
 import { LogConsole } from "@/components/LogConsole";
 import { InterventionPanel } from "@/components/InterventionPanel";
 import { ControlPanel, ControlState } from "@/components/ControlPanel";
@@ -19,8 +20,10 @@ import {
   ResolutionAction,
   Run,
   RunStatus,
+  RunInputField,
   Workflow,
 } from "@/lib/types";
+import { RunInputsDialog } from "@/components/RunInputsDialog";
 import { LiveBrowserView } from "@/components/LiveBrowserView";
 import { RunSummaryCard } from "@/components/RunSummaryCard";
 import { RecordingPlayer } from "@/components/RecordingPlayer";
@@ -46,12 +49,21 @@ export default function RunDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const [cancelling, setCancelling] = useState(false);
   const [retrying, setRetrying] = useState(false);
+  // Edit & retry: the run's inputs, loaded when the form opens (null = form closed).
+  const [editFields, setEditFields] = useState<RunInputField[] | null>(null);
   const [summary, setSummary] = useState<RunSummary | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
   const [clearingSignIn, setClearingSignIn] = useState(false);
   const [signInCleared, setSignInCleared] = useState(false);
   const workflowLoaded = useRef(false);
   const [view, setView] = useState<"live" | "canvas" | "recording" | "snapshots">("live");
+  // Once nobody has picked a tab, a finished run opens on what there is to look at (its screenshots / recording)
+  // instead of an empty "browser not running" live tab.
+  const pickedView = useRef(false);
+  const chooseView = (v: "live" | "canvas" | "recording" | "snapshots") => {
+    pickedView.current = true;
+    setView(v);
+  };
 
   const poll = useCallback(async () => {
     try {
@@ -96,6 +108,12 @@ export default function RunDetailPage({ params }: { params: { id: string } }) {
       setError(e instanceof ApiError ? e.message : "Could not load run");
     }
   }, [params.id]);
+
+  // A finished run, with no tab picked yet: open on what there is to look at, not an empty live tab.
+  useEffect(() => {
+    if (!run || pickedView.current || ACTIVE_STATUSES.has(run.status) || view !== "live") return;
+    setView(run.snapshots?.length ? "snapshots" : run.recording ? "recording" : "canvas");
+  }, [run, view]);
 
   useEffect(() => {
     if (!user) return;
@@ -223,6 +241,34 @@ export default function RunDetailPage({ params }: { params: { id: string } }) {
     }
   }
 
+  // Edit & retry: open the form with what this run used (sensitive values stay on the server).
+  async function openEdit() {
+    try {
+      setEditFields(await api.get<RunInputField[]>(`/runs/${params.id}/inputs`));
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Could not load this run's values");
+    }
+  }
+
+  // Sends only what the person changed; everything else is carried over by the server.
+  async function retryEdited(values: Record<string, string>) {
+    if (!editFields) return;
+    const changes: Record<string, string> = {};
+    for (const f of editFields) {
+      const now = values[f.key] ?? "";
+      if (f.sensitive ? now !== "" : now !== (f.value ?? "")) changes[f.key] = now;
+    }
+    setRetrying(true);
+    try {
+      const fresh = await api.post<Run>(`/runs/${params.id}/retry`, { inputs: changes });
+      router.push(`/runs/${fresh._id}`);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Could not retry the run");
+      setRetrying(false);
+      setEditFields(null);
+    }
+  }
+
   async function cancel() {
     setCancelling(true);
     try {
@@ -260,7 +306,25 @@ export default function RunDetailPage({ params }: { params: { id: string } }) {
     <div className="flex flex-col h-screen">
       <PageHeader
         eyebrow={workflow?.name ?? "Run"}
-        title={run ? <StatusBadge status={run.status} /> : "—"}
+        title={
+          run ? (
+            // Two separate answers: did the automation run to the end (task), and did the application succeed.
+            <span className="flex flex-wrap items-center gap-x-8 gap-y-1">
+              <span className="flex items-center gap-2">
+                <span className="text-[11px] font-mono uppercase tracking-wider text-text-dim">Task</span>
+                <StatusBadge status={run.status} />
+              </span>
+              {summary?.application && (
+                <span className="flex items-center gap-2">
+                  <span className="text-[11px] font-mono uppercase tracking-wider text-text-dim">Application</span>
+                  <ApplicationBadge application={summary.application} />
+                </span>
+              )}
+            </span>
+          ) : (
+            "—"
+          )
+        }
         actions={
           <div className="flex items-center gap-2">
             {run?.sessionKey && (
@@ -293,6 +357,33 @@ export default function RunDetailPage({ params }: { params: { id: string } }) {
                   {retrying ? "Retrying…" : "Retry run"}
                 </button>
               )}
+            {run &&
+              (run.status === RunStatus.FAILED || run.status === RunStatus.CANCELLED) && (
+                <button
+                  onClick={openEdit}
+                  disabled={retrying}
+                  data-testid="edit-retry-run"
+                  title="Change some of the values this run used, then run it again"
+                  className="btn-ghost hover:text-signal hover:border-signal/40 disabled:opacity-40"
+                >
+                  Edit &amp; retry
+                </button>
+              )}
+            {editFields && (
+              <RunInputsDialog
+                inputs={editFields}
+                submitting={retrying}
+                onSubmit={retryEdited}
+                onCancel={() => setEditFields(null)}
+                initialValues={Object.fromEntries(
+                  editFields.filter((f) => !f.sensitive).map((f) => [f.key, f.value ?? ""]),
+                )}
+                keepKeys={editFields.filter((f) => f.sensitive && f.hasValue).map((f) => f.key)}
+                title="Edit & retry"
+                description="Change what needs fixing, then run it again. Anything you leave as it is is kept — private values (Aadhaar, PAN, bank account…) stay hidden unless you type a new one."
+                submitLabel="Retry with these"
+              />
+            )}
             {run && ACTIVE_STATUSES.has(run.status) && (
               <button
                 onClick={cancel}
@@ -308,15 +399,18 @@ export default function RunDetailPage({ params }: { params: { id: string } }) {
 
       {error && <p className="text-danger text-sm px-8 py-2">{error}</p>}
 
-      <div className="flex-1 min-h-0 flex flex-col">
+      {/* Side by side on a wide screen — the viewer (live browser, screenshots…) on the left, the details on the
+          right — and stacked, as before, on a narrow one. */}
+      <div className="flex-1 min-h-0 flex flex-col lg:flex-row" data-testid="run-layout">
         <div
+          data-testid="run-viewer"
           className={`${
             run && !ACTIVE_STATUSES.has(run.status) ? "h-[30%]" : "h-[68%]"
-          } border-b border-ink-line flex flex-col`}
+          } lg:h-auto lg:w-[58%] lg:shrink-0 min-h-0 border-b lg:border-b-0 lg:border-r border-ink-line flex flex-col`}
         >
           <div className="flex gap-1 px-3 py-2 border-b border-ink-line">
             <button
-              onClick={() => setView("live")}
+              onClick={() => chooseView("live")}
               className={`text-xs font-mono uppercase px-2 py-1 rounded ${
                 view === "live" ? "bg-signal/15 text-signal" : "text-text-muted"
               }`}
@@ -324,7 +418,7 @@ export default function RunDetailPage({ params }: { params: { id: string } }) {
               Live
             </button>
             <button
-              onClick={() => setView("canvas")}
+              onClick={() => chooseView("canvas")}
               className={`text-xs font-mono uppercase px-2 py-1 rounded ${
                 view === "canvas"
                   ? "bg-signal/15 text-signal"
@@ -336,7 +430,7 @@ export default function RunDetailPage({ params }: { params: { id: string } }) {
             {!!run?.snapshots?.length && (
               <button
                 data-testid="view-snapshots"
-                onClick={() => setView("snapshots")}
+                onClick={() => chooseView("snapshots")}
                 className={`text-xs font-mono uppercase px-2 py-1 rounded ${
                   view === "snapshots"
                     ? "bg-signal/15 text-signal"
@@ -349,7 +443,7 @@ export default function RunDetailPage({ params }: { params: { id: string } }) {
             {run?.recording && (
               <button
                 data-testid="view-recording"
-                onClick={() => setView("recording")}
+                onClick={() => chooseView("recording")}
                 className={`text-xs font-mono uppercase px-2 py-1 rounded ${
                   view === "recording"
                     ? "bg-signal/15 text-signal"
@@ -398,7 +492,7 @@ export default function RunDetailPage({ params }: { params: { id: string } }) {
           </div>
         </div>
 
-        <div className="flex-1 min-h-0 overflow-y-auto p-4 flex flex-col gap-4">
+        <div data-testid="run-details" className="flex-1 min-h-0 lg:min-w-0 overflow-y-auto scroll-hover p-4 flex flex-col gap-4 [&>*]:shrink-0">
           {summary && run && (
             <RunSummaryCard runId={run._id} summary={summary} />
           )}
@@ -454,7 +548,8 @@ export default function RunDetailPage({ params }: { params: { id: string } }) {
 
           {run?.errorMessage && (
             <p className="text-danger text-sm bg-danger/10 border border-danger/30 rounded-md px-3 py-2">
-              {run.errorMessage}
+              {/* "website rejected: <reason> ‖ <advice>" is how the engine writes it; show it as plain sentences. */}
+              {run.errorMessage.replace(/^website rejected:\s*/i, "").replace(/\s*‖\s*/g, " — ")}
             </p>
           )}
 
@@ -462,7 +557,10 @@ export default function RunDetailPage({ params }: { params: { id: string } }) {
             <div className="px-4 py-2 border-b border-ink-line font-mono text-[10px] uppercase tracking-wider text-text-dim">
               Action log
             </div>
-            <LogConsole logs={logs} />
+            {/* Its own scroll box, so a long log never pushes the rest of the page away. */}
+            <div data-testid="action-log-scroll" className="max-h-[45vh] overflow-y-auto scroll-hover">
+              <LogConsole logs={logs} />
+            </div>
           </div>
         </div>
       </div>

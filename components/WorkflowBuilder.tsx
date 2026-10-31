@@ -7,6 +7,7 @@ import { WorkflowCanvas } from "@/components/canvas/WorkflowCanvas";
 import { StepEditorDrawer } from "@/components/canvas/StepEditorDrawer";
 import { RunInputsDialog } from "@/components/RunInputsDialog";
 import {
+  ApplicationRule,
   DecisionOutcome,
   Step,
   StepType,
@@ -16,6 +17,7 @@ import {
   SavedSignInStatus,
   emptyStep,
   emptyWorkflowInput,
+  parseOptions,
 } from "@/lib/types";
 import { api, ApiError } from "@/lib/api";
 
@@ -26,6 +28,8 @@ function outcomePayload(o: DecisionOutcome) {
     ...(o.label?.trim() ? { label: o.label.trim() } : {}),
     tone: o.tone,
     ...(o.setBranch?.trim() ? { setBranch: o.setBranch.trim() } : {}),
+    // Set by scripts, not editable here — but saving must not wipe it.
+    ...(o.fail ? { fail: true } : {}),
   };
 }
 
@@ -41,6 +45,7 @@ function buildPayload(
   steps: Step[],
   inputs: WorkflowInput[],
   keepSignedIn?: boolean,
+  applicationRule?: ApplicationRule,
 ) {
   return {
     name,
@@ -49,6 +54,8 @@ function buildPayload(
     // Only present once someone has chosen a value, so workflows that never
     // use it are saved exactly as before.
     ...(keepSignedIn === undefined ? {} : { keepSignedIn }),
+    // Set by scripts, not editable here — but saving must not wipe it.
+    ...(applicationRule ? { applicationRule: { referencePattern: applicationRule.referencePattern, ...(applicationRule.referenceLabel ? { referenceLabel: applicationRule.referenceLabel } : {}) } } : {}),
     steps: steps.map((s, i) => ({
       order: i,
       type: s.type,
@@ -65,6 +72,16 @@ function buildPayload(
       // Set by scripts, not editable here — but saving must not wipe them.
       ...(s.extractAs ? { extractAs: s.extractAs } : {}),
       ...(s.rejection ? { rejection: s.rejection } : {}),
+      ...(s.expectDownload ? { expectDownload: true } : {}),
+      ...(s.cleanup ? { cleanup: true } : {}),
+      ...(s.onlyIfText ? { onlyIfText: s.onlyIfText } : {}),
+      ...(s.onlyIfElseText ? { onlyIfElseText: s.onlyIfElseText } : {}),
+      ...(s.onlyIfWaitMs !== undefined ? { onlyIfWaitMs: s.onlyIfWaitMs } : {}),
+      ...(s.onlyIfInput ? { onlyIfInput: s.onlyIfInput } : {}),
+      ...(s.failIfText ? { failIfText: s.failIfText } : {}),
+      ...(s.failCases?.length ? { failCases: s.failCases.map((c) => ({ text: c.text, message: c.message, ...(c.suggestion ? { suggestion: c.suggestion } : {}) })) } : {}),
+      ...(s.customerNote ? { customerNote: s.customerNote } : {}),
+      ...(s.waitGoneText ? { waitGoneText: s.waitGoneText } : {}),
       ...(s.type === StepType.DECIDE && s.decision
         ? {
             decision: {
@@ -72,6 +89,8 @@ function buildPayload(
               isRegex: !!s.decision.isRegex,
               scope: s.decision.scope?.trim() || undefined,
               settleMs: s.decision.settleMs,
+              ...(s.decision.elseText ? { elseText: s.decision.elseText } : {}),
+              ...(s.decision.dismissDialogs ? { dismissDialogs: true } : {}),
               ifFound: outcomePayload(s.decision.ifFound),
               ifNotFound: outcomePayload(s.decision.ifNotFound),
             },
@@ -86,6 +105,7 @@ function buildPayload(
         sensitive: !!i.sensitive,
         required: i.required !== false,
         pattern: i.pattern?.trim() || undefined,
+        options: parseOptions(i.optionsText ?? i.options?.join(", ")),
       })),
   };
 }
@@ -107,6 +127,7 @@ interface WorkflowBuilderProps {
   initialSteps?: Step[];
   initialInputs?: WorkflowInput[];
   initialKeepSignedIn?: boolean;
+  initialApplicationRule?: ApplicationRule;
 }
 
 export function WorkflowBuilder({
@@ -117,6 +138,7 @@ export function WorkflowBuilder({
   initialSteps = [],
   initialInputs = [],
   initialKeepSignedIn,
+  initialApplicationRule,
 }: WorkflowBuilderProps) {
   const router = useRouter();
   const [name, setName] = useState(initialName);
@@ -139,7 +161,7 @@ export function WorkflowBuilder({
   const [error, setError] = useState<string | null>(null);
 
   const currentSnapshot = JSON.stringify(
-    buildPayload(name, description, trigger, steps, inputs, keepSignedIn),
+    buildPayload(name, description, trigger, steps, inputs, keepSignedIn, initialApplicationRule),
   );
   const [savedSnapshot, setSavedSnapshot] = useState(currentSnapshot);
   const dirty = currentSnapshot !== savedSnapshot;
@@ -272,7 +294,7 @@ export function WorkflowBuilder({
     }
     setSaving(true);
     try {
-      const payload = buildPayload(name, description, trigger, steps, inputs, keepSignedIn);
+      const payload = buildPayload(name, description, trigger, steps, inputs, keepSignedIn, initialApplicationRule);
       if (workflowId) {
         // Stay on the page (and keep any open step editor open) — all the
         // state here is already what was just saved.
@@ -442,6 +464,9 @@ export function WorkflowBuilder({
               workflow (e.g. an applicant ID) each time it's run.
             </p>
           )}
+          {/* One scrollbar for the whole list, at a fixed maximum height, so a long list
+              (Udyam has 60) never pushes the canvas off screen. */}
+          <div className="flex flex-col gap-2 max-h-64 overflow-y-auto pr-2">
           {inputs.map((input, i) => (
             <div key={i} className="flex items-center gap-2">
               <input
@@ -462,6 +487,18 @@ export function WorkflowBuilder({
                 title="Optional regex the value must match before a run starts"
                 value={input.pattern ?? ""}
                 onChange={(e) => updateInput(i, { pattern: e.target.value })}
+              />
+              <input
+                className="input w-48"
+                placeholder="dropdown choices, e.g. Yes, No"
+                title="Optional. Comma-separated choices — the run form then shows a dropdown instead of a free-text box"
+                value={input.optionsText ?? input.options?.join(", ") ?? ""}
+                onChange={(e) =>
+                  updateInput(i, {
+                    optionsText: e.target.value,
+                    options: parseOptions(e.target.value),
+                  })
+                }
               />
               <label className="flex items-center gap-1.5 text-xs text-text-muted shrink-0">
                 <input
@@ -491,6 +528,7 @@ export function WorkflowBuilder({
               </button>
             </div>
           ))}
+          </div>
         </div>
       )}
 

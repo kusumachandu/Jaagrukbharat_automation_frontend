@@ -38,6 +38,7 @@ export default function EditWorkflowPage({ params }: { params: { id: string } })
       initialSteps={workflow.steps}
       initialInputs={workflow.inputs}
       initialKeepSignedIn={workflow.keepSignedIn}
+      initialApplicationRule={workflow.applicationRule}
     />
   );
 }

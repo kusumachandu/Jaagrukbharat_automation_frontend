@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
+import { ApplicationBadge } from "@/components/ApplicationBadge";
 import { RESULT_TONE, formatDuration } from "@/components/SummaryParts";
 import { api, ApiError } from "@/lib/api";
 import { InterventionType, RunListItem, RunStatus } from "@/lib/types";
@@ -165,6 +166,12 @@ export default function SessionsPage() {
                       {run.workflowName}
                     </Link>
                     <StatusBadge status={run.status} />
+                    {run.application && (
+                      <span className="flex items-center gap-1.5">
+                        <span className="text-[10px] font-mono uppercase tracking-wider text-text-dim">App</span>
+                        <ApplicationBadge application={run.application} />
+                      </span>
+                    )}
                     {run.status === RunStatus.SUCCESS && run.result && (
                       <span
                         data-testid="session-result"

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { PageHeader } from '@/components/PageHeader';
 import { StatusBadge } from '@/components/StatusBadge';
+import { ApplicationBadge } from '@/components/ApplicationBadge';
 import { api, ApiError } from '@/lib/api';
 import { Run, Workflow } from '@/lib/types';
 
@@ -58,6 +59,12 @@ export default function RunHistoryPage({ params }: { params: { id: string } }) {
               >
                 <div className="flex items-center gap-4">
                   <StatusBadge status={run.status} />
+                  {run.application && (
+                    <span className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-mono uppercase tracking-wider text-text-dim">App</span>
+                      <ApplicationBadge application={run.application} />
+                    </span>
+                  )}
                   <span className="text-xs font-mono text-text-dim">
                     {new Date(run.createdAt).toLocaleString()}
                   </span>

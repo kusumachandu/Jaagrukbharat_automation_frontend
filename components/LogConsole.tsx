@@ -23,7 +23,7 @@ export function LogConsole({ logs }: { logs: ActionLog[] }) {
           </span>
           <span className="text-text-dim shrink-0">#{log.stepOrder}</span>
           <span className={`shrink-0 uppercase ${RESULT_COLOR[log.result]}`}>{log.result}</span>
-          <span className="text-text-muted truncate">
+          <span className="text-text-muted min-w-0 break-words">
             {log.selectorUsed && <span className="text-text-primary">{log.selectorUsed}</span>}
             {log.errorMessage && <span className="ml-2 text-danger">{log.errorMessage}</span>}
             {log.extractedValue && <span className="ml-2 text-ok">→ {log.extractedValue}</span>}
