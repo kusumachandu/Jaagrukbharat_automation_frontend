@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
+import { useAuth } from "@/lib/auth-context";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ApplicationBadge } from "@/components/ApplicationBadge";
@@ -40,6 +41,7 @@ const NO_CONTROL: ControlState = { controlled: false, requested: false, viewport
 
 export default function RunDetailPage({ params }: { params: { id: string } }) {
   const { user, loading } = useRequireAuth();
+  const { readOnly } = useAuth(); // Observers can look at a run but not act on it
   const [run, setRun] = useState<Run | null>(null);
   const [workflow, setWorkflow] = useState<Workflow | null>(null);
   const [logs, setLogs] = useState<ActionLog[]>([]);
@@ -350,7 +352,7 @@ export default function RunDetailPage({ params }: { params: { id: string } }) {
               (run.status === RunStatus.FAILED || run.status === RunStatus.CANCELLED) && (
                 <button
                   onClick={retry}
-                  disabled={retrying}
+                  disabled={retrying || readOnly}
                   data-testid="retry-run"
                   className="btn-ghost hover:text-signal hover:border-signal/40 disabled:opacity-40"
                 >
@@ -361,7 +363,7 @@ export default function RunDetailPage({ params }: { params: { id: string } }) {
               (run.status === RunStatus.FAILED || run.status === RunStatus.CANCELLED) && (
                 <button
                   onClick={openEdit}
-                  disabled={retrying}
+                  disabled={retrying || readOnly}
                   data-testid="edit-retry-run"
                   title="Change some of the values this run used, then run it again"
                   className="btn-ghost hover:text-signal hover:border-signal/40 disabled:opacity-40"
@@ -387,7 +389,7 @@ export default function RunDetailPage({ params }: { params: { id: string } }) {
             {run && ACTIVE_STATUSES.has(run.status) && (
               <button
                 onClick={cancel}
-                disabled={cancelling}
+                disabled={cancelling || readOnly}
                 className="btn-ghost hover:text-danger hover:border-danger/40 disabled:opacity-40"
               >
                 {cancelling ? "Cancelling…" : "Cancel run"}
@@ -526,24 +528,28 @@ export default function RunDetailPage({ params }: { params: { id: string } }) {
           )}
 
           {run && workflow && (run.status === RunStatus.RUNNING || run.status === RunStatus.PAUSED) && (
-            <ControlPanel
-              status={run.status}
-              control={control}
-              intervention={intervention}
-              steps={workflow.steps}
-              onTake={takeControl}
-              onRelease={releaseControl}
-              onResume={resumeFrom}
-              onGoto={gotoUrl}
-            />
+            <fieldset disabled={readOnly} className="contents">
+              <ControlPanel
+                status={run.status}
+                control={control}
+                intervention={intervention}
+                steps={workflow.steps}
+                onTake={takeControl}
+                onRelease={releaseControl}
+                onResume={resumeFrom}
+                onGoto={gotoUrl}
+              />
+            </fieldset>
           )}
 
           {intervention && intervention.type !== InterventionType.HUMAN_CONTROL && (
-            <InterventionPanel
-              intervention={intervention}
-              step={workflow?.steps.find((s) => s.order === intervention.stepOrder)}
-              onResolve={resolve}
-            />
+            <fieldset disabled={readOnly} className="contents">
+              <InterventionPanel
+                intervention={intervention}
+                step={workflow?.steps.find((s) => s.order === intervention.stepOrder)}
+                onResolve={resolve}
+              />
+            </fieldset>
           )}
 
           {run?.errorMessage && (

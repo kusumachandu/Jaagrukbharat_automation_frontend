@@ -15,6 +15,15 @@ export function clearToken() {
   window.localStorage.removeItem(TOKEN_KEY);
 }
 
+// Set by the auth provider for Observers. The server refuses every change from them anyway; this just
+// answers at once, in plain words, instead of after a round trip.
+let readOnly = false;
+export function setReadOnly(value: boolean) {
+  readOnly = value;
+}
+export const isReadOnly = () => readOnly;
+export const READ_ONLY_MESSAGE = "You have read-only access, so this action isn't available.";
+
 export class ApiError extends Error {
   status: number;
   constructor(status: number, message: string) {
@@ -24,6 +33,7 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  if (readOnly && (options.method ?? "GET") !== "GET") throw new ApiError(403, READ_ONLY_MESSAGE);
   const token = getToken();
   const headers: Record<string, string> = {
     "Content-Type": "application/json",

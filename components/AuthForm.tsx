@@ -6,7 +6,8 @@ import { ApiError } from '@/lib/auth-context';
 
 interface AuthFormProps {
   mode: 'login' | 'signup';
-  onSubmit: (email: string, password: string) => Promise<void>;
+  // Signup resolves with a message when the account has to be approved first.
+  onSubmit: (email: string, password: string) => Promise<string | void>;
 }
 
 export function AuthForm({ mode, onSubmit }: AuthFormProps) {
@@ -14,13 +15,15 @@ export function AuthForm({ mode, onSubmit }: AuthFormProps) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [pendingMessage, setPendingMessage] = useState<string | null>(null);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
     setBusy(true);
     try {
-      await onSubmit(email, password);
+      const message = await onSubmit(email, password);
+      if (message) setPendingMessage(message);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Something went wrong. Try again.');
     } finally {
@@ -38,6 +41,19 @@ export function AuthForm({ mode, onSubmit }: AuthFormProps) {
           </span>
         </div>
 
+        {pendingMessage ? (
+          <div className="bg-ink-panel border border-ink-line rounded-lg shadow-panel p-6 text-center">
+            <div className="mx-auto mb-4 w-10 h-10 rounded-full bg-signal/15 border border-signal/40 flex items-center justify-center">
+              <span className="w-2 h-2 rounded-full bg-signal pulse-soft" />
+            </div>
+            <h1 className="font-display text-lg font-semibold mb-1">Request sent</h1>
+            <p className="text-text-muted text-sm mb-1">{pendingMessage}</p>
+            <p className="text-text-dim text-xs font-mono mb-5">{email}</p>
+            <Link href="/login" className="text-signal text-sm hover:underline">
+              Back to sign in
+            </Link>
+          </div>
+        ) : (
         <div className="bg-ink-panel border border-ink-line rounded-lg shadow-panel p-6">
           <h1 className="font-display text-lg font-semibold mb-1">
             {mode === 'login' ? 'Sign in' : 'Create an account'}
@@ -45,7 +61,7 @@ export function AuthForm({ mode, onSubmit }: AuthFormProps) {
           <p className="text-text-muted text-sm mb-6">
             {mode === 'login'
               ? 'Access your workflows and live runs.'
-              : 'Takes a few seconds — no card required.'}
+              : 'An administrator approves new accounts before they can sign in.'}
           </p>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -87,6 +103,7 @@ export function AuthForm({ mode, onSubmit }: AuthFormProps) {
             </button>
           </form>
         </div>
+        )}
 
         <p className="text-center text-text-muted text-sm mt-4">
           {mode === 'login' ? (

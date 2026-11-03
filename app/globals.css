@@ -6,6 +6,18 @@
   --font-display: var(--font-space-grotesk);
   --font-body: var(--font-inter);
   --font-mono: var(--font-jbmono);
+
+  /* Analytics chart colours - validated against the panel surface (#161D26) with the dataviz palette checker.
+     The success/failed pair is red/green, so charts also carry order, glyphs, labels and a table view. */
+  --c-surface: #161d26;
+  --c-success: #199e70;
+  --c-failed: #e66767;
+  --c-cancelled: #7c8b9b;
+  --c-active: #3987e5;
+  --c-accent: #e8a33d;
+  --c-grid: rgba(124, 139, 155, 0.14);
+  --c-hover: rgba(232, 237, 242, 0.05);
+  --c-crosshair: rgba(232, 237, 242, 0.28);
 }
 
 html,
@@ -110,4 +122,33 @@ body {
 
 .pulse-soft {
   animation: pulse-soft 1.6s ease-in-out infinite;
+}
+
+/* A light that sweeps along the top of a card whose run is in progress. */
+@keyframes sweep {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(250%); }
+}
+.sweep::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+  animation: sweep 1.8s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sweep::after { animation: none; }
+}
+
+/* Charts draw in from the left when their data arrives. */
+@keyframes chart-reveal {
+  from { clip-path: inset(0 100% 0 0); }
+  to { clip-path: inset(0 0 0 0); }
+}
+.chart-reveal {
+  animation: chart-reveal 0.9s cubic-bezier(0.22, 0.8, 0.3, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .chart-reveal { animation: none; }
 }

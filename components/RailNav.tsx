@@ -1,12 +1,28 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useAuth } from '@/lib/auth-context';
+import { useAuth, ROLE_LABEL } from '@/lib/auth-context';
+import { api } from '@/lib/api';
 
 export function RailNav() {
   const pathname = usePathname();
-  const { user, logout } = useAuth();
+  const { user, logout, isSuperAdmin, readOnly } = useAuth();
+  const [waiting, setWaiting] = useState(0);
+
+  // Super Admins see how many people are waiting for approval.
+  useEffect(() => {
+    if (!isSuperAdmin) return;
+    const load = () =>
+      api
+        .get<{ count: number }>('/users/pending-count')
+        .then((r) => setWaiting(r.count))
+        .catch(() => {});
+    load();
+    const t = setInterval(load, 30000);
+    return () => clearInterval(t);
+  }, [isSuperAdmin]);
 
   if (pathname === '/login' || pathname === '/signup') return null;
   // The end-user session window is a standalone page for someone who isn't an
@@ -45,18 +61,42 @@ export function RailNav() {
             <circle cx="12" cy="10.5" r="1.6" fill="currentColor" />
           </svg>
         </NavItem>
+        <NavItem href="/analytics" label="Analytics" active={!!pathname?.startsWith('/analytics')}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+          </svg>
+        </NavItem>
         <NavItem href="/batches" label="Run from a sheet" active={!!pathname?.startsWith('/batches')}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
             <rect x="4" y="3" width="16" height="18" rx="2" stroke="currentColor" strokeWidth="1.6" />
             <path d="M4 9h16M4 15h16M10 3v18" stroke="currentColor" strokeWidth="1.6" />
           </svg>
         </NavItem>
+        {isSuperAdmin && (
+          <NavItem href="/team" label="Team" active={!!pathname?.startsWith('/team')} badge={waiting}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <circle cx="9" cy="8" r="3.2" stroke="currentColor" strokeWidth="1.6" />
+              <path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+              <path d="M16 5.2a3.2 3.2 0 010 5.6M18 14.4c1.8.8 3 2.6 3 4.6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+            </svg>
+          </NavItem>
+        )}
       </div>
 
       <div className="mt-auto flex flex-col items-center gap-2">
+        {readOnly && (
+          <div
+            className="rounded-md border border-warn/40 bg-warn/10 px-1.5 py-1 text-[9px] font-mono uppercase tracking-wide text-warn text-center leading-tight"
+            title="Observer: you can see everything but can't change anything"
+          >
+            Read
+            <br />
+            only
+          </div>
+        )}
         <div
           className="w-7 h-7 rounded-full bg-ink-raised border border-ink-line flex items-center justify-center text-[10px] font-mono text-text-muted"
-          title={user.email}
+          title={`${user.email} · ${ROLE_LABEL[user.role]}`}
         >
           {user.email.slice(0, 2).toUpperCase()}
         </div>
@@ -84,24 +124,31 @@ function NavItem({
   href,
   label,
   active,
+  badge,
   children,
 }: {
   href: string;
   label: string;
   active: boolean;
+  badge?: number;
   children: React.ReactNode;
 }) {
   return (
     <Link
       href={href}
       title={label}
-      className={`w-9 h-9 rounded-md flex items-center justify-center transition-colors ${
+      className={`relative w-9 h-9 rounded-md flex items-center justify-center transition-colors ${
         active
           ? 'bg-signal/15 text-signal border border-signal/30'
           : 'text-text-muted hover:text-text-primary hover:bg-ink-raised border border-transparent'
       }`}
     >
       {children}
+      {!!badge && (
+        <span className="absolute -top-1 -right-1 min-w-[16px] h-4 rounded-full bg-signal text-ink text-[10px] font-semibold flex items-center justify-center px-1">
+          {badge}
+        </span>
+      )}
     </Link>
   );
 }

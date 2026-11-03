@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { PageHeader } from "@/components/PageHeader";
 import { FileDropzone } from "@/components/FileDropzone";
-import { API_BASE, ApiError, api, downloadFile, getToken } from "@/lib/api";
+import { API_BASE, ApiError, READ_ONLY_MESSAGE, api, downloadFile, getToken, isReadOnly } from "@/lib/api";
 import type { BatchProgress, BatchSummary, Workflow } from "@/lib/types";
 
 const FINISHED = new Set(["success", "failed", "cancelled", "skipped"]);
@@ -69,6 +69,11 @@ export default function BatchesPage() {
 
   async function start() {
     if (!file || !workflowId) return;
+    // this upload bypasses the api helper (multipart), so it checks read-only itself
+    if (isReadOnly()) {
+      setError(READ_ONLY_MESSAGE);
+      return;
+    }
     setStarting(true);
     setError(null);
     try {
