@@ -17,6 +17,34 @@ interface RunInputsDialogProps {
   submitLabel?: string;
 }
 
+// Testing convenience: the last values used for a workflow are remembered in this browser and filled in
+// next time. Never for sensitive variables (an Aadhaar number…) — those are retyped every run — and not
+// when editing a run to retry it (that starts from the run's own values).
+function storageKey(inputs: WorkflowInput[]): string {
+  return `autoflow:last-run-inputs:${inputs.map((i) => i.key).join(",")}`;
+}
+
+function loadSaved(inputs: WorkflowInput[]): Record<string, string> {
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(storageKey(inputs)) ?? "{}") as Record<string, string>;
+    const out: Record<string, string> = {};
+    for (const i of inputs) if (!i.sensitive && typeof saved[i.key] === "string") out[i.key] = saved[i.key];
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+function saveValues(inputs: WorkflowInput[], values: Record<string, string>): void {
+  try {
+    const out: Record<string, string> = {};
+    for (const i of inputs) if (!i.sensitive && values[i.key]) out[i.key] = values[i.key];
+    window.localStorage.setItem(storageKey(inputs), JSON.stringify(out));
+  } catch {
+    // storage blocked or full: remembering is only a convenience
+  }
+}
+
 export function RunInputsDialog({
   inputs,
   submitting,
@@ -28,7 +56,7 @@ export function RunInputsDialog({
   description = "Fill in the variables this workflow needs before it starts.",
   submitLabel = "Start run",
 }: RunInputsDialogProps) {
-  const [values, setValues] = useState<Record<string, string>>(initialValues ?? {});
+  const [values, setValues] = useState<Record<string, string>>(() => initialValues ?? loadSaved(inputs));
   const [error, setError] = useState<string | null>(null);
 
   function handleSubmit(e: FormEvent) {
@@ -62,6 +90,7 @@ export function RunInputsDialog({
     }
 
     setError(null);
+    if (!initialValues) saveValues(inputs, trimmed);
     onSubmit(trimmed);
   }
 
