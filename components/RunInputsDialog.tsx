@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { WorkflowInput } from "@/lib/types";
+import { conditionHolds, fieldMode } from "@/lib/inputOptions";
 
 interface RunInputsDialogProps {
   inputs: WorkflowInput[];
@@ -59,12 +60,33 @@ export function RunInputsDialog({
   const [values, setValues] = useState<Record<string, string>>(() => initialValues ?? loadSaved(inputs));
   const [error, setError] = useState<string | null>(null);
 
+  // Sets one value. Anything that depends on it (a district, once the state changes) is cleared when its
+  // current value is no longer one of the choices, so a stale district can never be submitted.
+  function setValue(key: string, value: string) {
+    setValues((prev) => {
+      const next = { ...prev, [key]: value };
+      for (const dep of inputs) {
+        if (!dep.dependsOn?.includes(key) || !next[dep.key]) continue;
+        const field = fieldMode(dep, next, inputs);
+        const stillValid =
+          field.mode === "text" ||
+          (field.mode === "select" &&
+            field.options.some((o) => o.trim().toLowerCase() === next[dep.key].trim().toLowerCase()));
+        if (!stillValid) next[dep.key] = "";
+      }
+      return next;
+    });
+  }
+
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    // Only the questions being asked count: a hidden one (the plant details when there is no plant) is neither
+    // required nor sent, whatever was typed in it before the answer changed.
+    const asked = inputs.filter((i) => conditionHolds(i.showIf, values));
     const trimmed: Record<string, string> = {};
-    for (const i of inputs) trimmed[i.key] = (values[i.key] ?? "").trim();
+    for (const i of asked) trimmed[i.key] = (values[i.key] ?? "").trim();
 
-    const missing = inputs.filter(
+    const missing = asked.filter(
       (i) => i.required !== false && !trimmed[i.key] && !keepKeys.includes(i.key),
     );
     if (missing.length > 0) {
@@ -74,7 +96,7 @@ export function RunInputsDialog({
       return;
     }
 
-    const badFormat = inputs.filter((i) => {
+    const badFormat = asked.filter((i) => {
       if (!i.pattern || !trimmed[i.key]) return false;
       try {
         return !new RegExp(i.pattern).test(trimmed[i.key]);
@@ -108,7 +130,10 @@ export function RunInputsDialog({
           {/* One scrollbar for the fields, at a fixed maximum height: the title and the
               Start / Cancel buttons stay in view however many variables there are. */}
           <div className="flex flex-col gap-3 max-h-[55vh] overflow-y-auto pr-2">
-          {inputs.map((input) => (
+          {inputs.map((input) => {
+            if (!conditionHolds(input.showIf, values)) return null; // not asked (yet): e.g. plant details until "Yes"
+            const field = fieldMode(input, values, inputs);
+            return (
             <label key={input.key} className="flex flex-col gap-1.5">
               <span className="text-xs font-mono uppercase tracking-wider text-text-dim">
                 {input.label || input.key}
@@ -116,20 +141,23 @@ export function RunInputsDialog({
                   <span className="text-danger"> *</span>
                 )}
               </span>
-              {input.options && input.options.length > 0 ? (
+              {field.mode === "waiting" ? (
+                // A dependent dropdown (a state's districts) stays shut until what it depends on is chosen.
+                <select className="input opacity-60" disabled value="">
+                  <option value="">Choose {field.waitingFor.join(" and ").toLowerCase()} first</option>
+                </select>
+              ) : field.mode === "select" ? (
                 // A variable with choices is a dropdown, so nobody has to remember the exact words.
                 <select
                   className="input"
                   value={values[input.key] ?? ""}
-                  onChange={(e) =>
-                    setValues((prev) => ({ ...prev, [input.key]: e.target.value }))
-                  }
+                  onChange={(e) => setValue(input.key, e.target.value)}
                   autoFocus={inputs[0]?.key === input.key}
                 >
                   <option value="">
                     {input.required !== false ? "Select…" : "— none —"}
                   </option>
-                  {input.options.map((o) => (
+                  {field.options.map((o) => (
                     <option key={o} value={o}>
                       {o}
                     </option>
@@ -140,9 +168,7 @@ export function RunInputsDialog({
                   type={input.sensitive ? "password" : "text"}
                   className="input"
                   value={values[input.key] ?? ""}
-                  onChange={(e) =>
-                    setValues((prev) => ({ ...prev, [input.key]: e.target.value }))
-                  }
+                  onChange={(e) => setValue(input.key, e.target.value)}
                   placeholder={
                     keepKeys.includes(input.key) ? "•••• unchanged — type to replace" : input.key
                   }
@@ -150,7 +176,8 @@ export function RunInputsDialog({
                 />
               )}
             </label>
-          ))}
+            );
+          })}
           </div>
 
           {error &&<p className="text-danger text-xs">{error}</p>}

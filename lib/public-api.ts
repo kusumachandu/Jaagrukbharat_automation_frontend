@@ -1,5 +1,5 @@
 import { API_BASE, ApiError } from "./api";
-import { PublicSessionView } from "./types";
+import { PublicSessionView, WorkflowInput } from "./types";
 
 // Client for the end-user session window. Deliberately NOT the `api` wrapper:
 // that one attaches the operator's login token and hard-redirects to /login on
@@ -58,9 +58,30 @@ export interface PublicStartView {
   mobileHint?: string;
   serviceName?: string;
   lastFailure?: string;
+  // The page shows a form to check and complete (publicStart.form) before anything starts.
+  review?: boolean;
   // Present once a run exists, so the page can send the customer to their session window.
   runId?: string;
   sessionKey?: string;
+}
+
+/** One question of the review form. A sensitive answer (Aadhaar, mobile…) arrives only as a masked `hint`. */
+export interface PublicReviewField extends WorkflowInput {
+  prefilled: boolean;
+  value?: string;
+  hint?: string;
+}
+
+export interface PublicReviewForm {
+  displayName: string;
+  groups: Array<{ title: string; keys: string[] }>;
+  fields: PublicReviewField[];
+}
+
+/** What the server says is wrong, per field, when the answers are not acceptable (422). */
+export function fieldErrorsOf(e: unknown): Record<string, string> | null {
+  const body = e instanceof ApiError ? (e.body as { fieldErrors?: Record<string, string> } | undefined) : undefined;
+  return body?.fieldErrors && typeof body.fieldErrors === "object" ? body.fieldErrors : null;
 }
 
 async function startRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -71,13 +92,15 @@ async function startRequest<T>(path: string, init: RequestInit = {}): Promise<T>
   });
   if (!res.ok) {
     let message = res.statusText;
+    let parsed: unknown;
     try {
       const body = await res.json();
+      parsed = body;
       message = Array.isArray(body.message) ? body.message.join(", ") : body.message ?? message;
     } catch {
       // no JSON body
     }
-    throw new ApiError(res.status, message);
+    throw new ApiError(res.status, message, parsed);
   }
   return res.json() as Promise<T>;
 }
@@ -85,8 +108,15 @@ async function startRequest<T>(path: string, init: RequestInit = {}): Promise<T>
 export const publicStart = {
   view: (token: string) => startRequest<PublicStartView>(`/${encodeURIComponent(token)}`),
 
+  // For a service that is reviewed first: the questions, with what we already know filled in.
+  form: (token: string) => startRequest<PublicReviewForm>(`/${encodeURIComponent(token)}/form`),
+
   // Safe to call twice: the server hands back the same run. A 202 means another tap claimed it and it is still
-  // starting, so the answer may not carry a run yet.
-  start: (token: string) =>
-    startRequest<{ runId?: string; sessionKey?: string }>(`/${encodeURIComponent(token)}/start`, { method: "POST" }),
+  // starting, so the answer may not carry a run yet. For a reviewed service, `inputs` are the checked answers; a 422
+  // answers with { fieldErrors } naming what is wrong (see fieldErrorsOf).
+  start: (token: string, inputs?: Record<string, string>) =>
+    startRequest<{ runId?: string; sessionKey?: string }>(`/${encodeURIComponent(token)}/start`, {
+      method: "POST",
+      ...(inputs ? { body: JSON.stringify({ inputs }) } : {}),
+    }),
 };

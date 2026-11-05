@@ -146,3 +146,21 @@
 .jbs footer a { color: var(--mut); text-decoration: underline; }
 .jbs .center { padding-top: 96px; text-align: center; color: var(--mut); }
 .jbs .center h1 { color: var(--tx); }
+
+/* The "check your details" form on the Start page (Udyam): prefilled answers marked, missing ones highlighted,
+   a wrong one outlined in red. Scroll margin keeps the field clear of the top edge when the page scrolls to an error. */
+.jbs .rv-group { padding-bottom: 6px; }
+.jbs .rv-field { margin-bottom: 14px; scroll-margin-top: 80px; padding: 8px 10px; margin-left: -10px; margin-right: -10px; border-radius: 10px; border: 1.5px solid transparent; }
+.jbs .rv-field.needed { background: var(--turnbg); border-color: var(--turnline); }
+.jbs .rv-field.has-error { background: var(--badbg); border-color: var(--bad); }
+.jbs .rv-label { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-size: 13px; font-weight: 600; color: var(--tx); margin-bottom: 6px; }
+.jbs .rv-star { color: var(--bad); }
+.jbs .rv-tag { font: 600 10px var(--font-jbmono), monospace; letter-spacing: .03em; padding: 2px 8px; border-radius: 99px; border: 1px solid; white-space: nowrap; }
+.jbs .rv-tag.ok { color: var(--ok); border-color: var(--ok); background: var(--okbg); }
+.jbs .rv-tag.need { color: var(--turn); border-color: var(--turnline); background: #fff; }
+.jbs .rv-input { width: 100%; height: 44px; padding: 0 12px; font: 500 15px inherit; font-family: inherit; background: var(--in); color: var(--tx); border: 1.5px solid var(--line); border-radius: 10px; }
+.jbs .rv-input:focus { outline: 0; border-color: var(--brand); box-shadow: 0 0 0 3px var(--okbg); }
+.jbs .rv-input:disabled { opacity: .6; }
+.jbs .rv-field.has-error .rv-input { border-color: var(--bad); }
+.jbs .rv-error { color: var(--bad); font-size: 13px; margin-top: 6px; }
+.jbs .rv-summary { color: var(--bad); font-size: 14px; font-weight: 600; margin: 4px 0 12px; }

@@ -26,9 +26,12 @@ export const READ_ONLY_MESSAGE = "You have read-only access, so this action isn'
 
 export class ApiError extends Error {
   status: number;
-  constructor(status: number, message: string) {
+  // The parsed error body, when the server sent one (e.g. { message, fieldErrors } from the review form).
+  body?: unknown;
+  constructor(status: number, message: string, body?: unknown) {
     super(message);
     this.status = status;
+    this.body = body;
   }
 }
 

@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { publicStart, PublicStartView } from "@/lib/public-api";
+import { fieldErrorsOf, publicStart, PublicReviewForm, PublicStartView } from "@/lib/public-api";
 import { ApiError } from "@/lib/api";
 import { BRAND_NAME } from "@/lib/brand";
+import { ReviewForm } from "@/components/start/ReviewForm";
 
 const SUPPORT_PHONE = process.env.NEXT_PUBLIC_SUPPORT_PHONE || "07965802414";
 
@@ -18,6 +19,10 @@ export default function StartPage({ params }: { params: { token: string } }) {
   const [problem, setProblem] = useState<"invalid" | "offline" | null>(null);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // A service that is reviewed first (Udyam): the form to check and complete, and what the server found wrong in it.
+  const [form, setForm] = useState<PublicReviewForm | null>(null);
+  const [formProblem, setFormProblem] = useState<string | null>(null);
+  const [serverErrors, setServerErrors] = useState<Record<string, string> | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -32,17 +37,38 @@ export default function StartPage({ params }: { params: { token: string } }) {
     load();
   }, [load]);
 
+  const needsForm = view?.review && view.status === "ready";
+  useEffect(() => {
+    if (!needsForm || form) return;
+    let cancelled = false;
+    publicStart
+      .form(token)
+      .then((f) => !cancelled && (setForm(f), setFormProblem(null)))
+      .catch((e) => {
+        if (cancelled) return;
+        setFormProblem(
+          e instanceof ApiError && e.status === 502
+            ? "We could not load your details right now. Please try again in a minute."
+            : "We could not open your form. Please try again in a moment.",
+        );
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [needsForm, form, token]);
+
   const openSession = useCallback(
     (runId: string, sessionKey: string) =>
       router.push(`/session/${encodeURIComponent(runId)}/${encodeURIComponent(sessionKey)}`),
     [router],
   );
 
-  async function start() {
+  async function start(inputs?: Record<string, string>) {
     setStarting(true);
     setError(null);
+    setServerErrors(null);
     try {
-      let answer = await publicStart.start(token);
+      let answer = await publicStart.start(token, inputs);
       // Another tap (or another phone) claimed it a moment ago: wait for the run to appear.
       for (let i = 0; i < 10 && !(answer.runId && answer.sessionKey); i++) {
         await new Promise((r) => setTimeout(r, 1500));
@@ -60,7 +86,10 @@ export default function StartPage({ params }: { params: { token: string } }) {
       } else if (e instanceof ApiError && e.status === 429) {
         setError("Too many tries. Please wait a minute and try again.");
       } else if (e instanceof ApiError && e.status === 422) {
-        setError(e.message);
+        // The form: say which fields are wrong (the form scrolls to the first). Anything else: the plain message.
+        const fields = fieldErrorsOf(e);
+        if (fields) setServerErrors(fields);
+        else setError(e.message);
       } else {
         setError("We could not start right now. Please try again in a minute.");
       }
@@ -107,7 +136,51 @@ export default function StartPage({ params }: { params: { token: string } }) {
         <span className={`pill ${pillClass}`}>{view.status === "ready" ? "READY TO START" : view.status.toUpperCase()}</span>
       </div>
 
-      {view.status === "ready" && (
+      {view.status === "ready" && view.review && (
+        <div data-testid="start-review">
+          <h1>Check your details{name}</h1>
+          <p className="sub">
+            Your payment for <b>{service}</b> is received. We have filled in what you gave us on the website. Please
+            check it, add the details we still need, and tap <b>Confirm and start application</b>.
+          </p>
+
+          {view.lastFailure && (
+            <div data-testid="last-failure" className="note hold">
+              <b>The last try did not finish</b>
+              <div>{view.lastFailure}</div>
+            </div>
+          )}
+
+          <div className="banner">
+            <span aria-hidden>⚠️</span>
+            <div>
+              <b>Keep your phone with you.</b>
+              <br />
+              Once you confirm, the official website will send you an OTP and may show a code to type here.
+            </div>
+          </div>
+
+          {form ? (
+            <ReviewForm form={form} submitting={starting} serverErrors={serverErrors} onConfirm={(inputs) => start(inputs)} />
+          ) : (
+            <p className="sub" data-testid="form-loading">
+              {formProblem ?? "Loading your details…"}
+            </p>
+          )}
+
+          {error && (
+            <p data-testid="start-error" className="sub" style={{ color: "var(--bad)", marginTop: 12 }}>
+              {error}
+            </p>
+          )}
+          <p className="sub" style={{ marginTop: 16 }}>
+            {view.attemptsLeft} {view.attemptsLeft === 1 ? "try" : "tries"} left · this link works until{" "}
+            {new Date(view.expiresAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}
+          </p>
+        </div>
+      )}
+
+      {view.status === "ready" && !view.review && (
         <div data-testid="start-ready">
           <h1>Hi{name}</h1>
           <p className="sub">
@@ -131,7 +204,7 @@ export default function StartPage({ params }: { params: { token: string } }) {
             </div>
           </div>
 
-          <button data-testid="start-button" className="btn" disabled={starting || !view.canStart} onClick={start}>
+          <button data-testid="start-button" className="btn" disabled={starting || !view.canStart} onClick={() => start()}>
             {starting ? "Starting…" : view.lastFailure ? "Try again" : "Start"}
           </button>
           {error && (

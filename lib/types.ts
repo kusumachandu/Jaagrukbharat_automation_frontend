@@ -156,6 +156,12 @@ export interface WorkflowInput {
   pattern?: string;
   // Makes the variable a dropdown: the value must be one of these.
   options?: string[];
+  // A dropdown whose choices depend on other variables (a state's districts): the keys of those variables, and the
+  // choices for each value of them (several parents are joined with "||"). The run form offers only those.
+  dependsOn?: string[];
+  optionsByParent?: Record<string, string[]>;
+  // Only asked when this holds against the other answers, e.g. "has_plant=Yes". Hidden (and never required) otherwise.
+  showIf?: string;
   // Editor only (never sent): what was typed in the "choices" box, so a trailing comma isn't eaten while typing.
   optionsText?: string;
 }

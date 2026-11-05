@@ -106,6 +106,10 @@ function buildPayload(
         required: i.required !== false,
         pattern: i.pattern?.trim() || undefined,
         options: parseOptions(i.optionsText ?? i.options?.join(", ")),
+        // Not editable here, but must travel back with the workflow: leaving them out would erase a
+        // dependent dropdown (a state's districts) the next time anyone saves it from the editor.
+        ...(i.dependsOn?.length && i.optionsByParent ? { dependsOn: i.dependsOn, optionsByParent: i.optionsByParent } : {}),
+        ...(i.showIf ? { showIf: i.showIf } : {}),
       })),
   };
 }
