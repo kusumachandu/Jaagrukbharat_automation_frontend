@@ -20,7 +20,8 @@ export function ReviewForm({ form, submitting, serverErrors, onConfirm }: Review
   const [values, setValues] = useState<Record<string, string>>(() =>
     Object.fromEntries(form.fields.filter((f) => f.value !== undefined).map((f) => [f.key, f.value as string])),
   );
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  // Fields the website refused on the last try start highlighted, with what to correct.
+  const [errors, setErrors] = useState<Record<string, string>>(() => form.fixes ?? {});
 
   const fields = form.fields;
   // The order the questions appear in, top to bottom: the first error in this order is the one scrolled to.
@@ -40,6 +41,11 @@ export function ReviewForm({ form, submitting, serverErrors, onConfirm }: Review
       (wrap.querySelector("input, select") as HTMLElement | null)?.focus({ preventScroll: true });
     });
   }
+
+  useEffect(() => {
+    if (form.fixes && Object.keys(form.fixes).length > 0) scrollToFirstError(form.fixes);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!serverErrors) return;

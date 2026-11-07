@@ -350,7 +350,7 @@ export default function SessionWindow({
               <div className="why">
                 <small>It stopped at: {summary.failure.stepLabel}</small>
                 <p>{summary.failure.reason}</p>
-                <small>{summary.failure.suggestion}</small>
+                {!view.retry && <small>{summary.failure.suggestion}</small>}
                 {summary.failure.websiteSaid && summary.failure.websiteSaid.length > 0 && (
                   <div data-testid="website-said" className="note hold" style={{ marginTop: 10 }}>
                     <b>What the website said</b>
@@ -359,6 +359,16 @@ export default function SessionWindow({
                     ))}
                   </div>
                 )}
+              </div>
+            )}
+            {view.retry && (
+              <div style={{ marginTop: 14 }}>
+                <a data-testid="retry-link" className="btn" href={view.retry.startUrl}>
+                  {view.retry.fixes?.length ? "Correct your details and try again" : "Check your details and try again"}
+                </a>
+                <p className="sub" style={{ marginTop: 8 }}>
+                  {view.retry.attemptsLeft} {view.retry.attemptsLeft === 1 ? "try" : "tries"} left. The details to correct are marked for you.
+                </p>
               </div>
             )}
           </div>

@@ -402,6 +402,8 @@ export interface PublicSessionView {
   status: RunStatus;
   summary: RunSummary;
   awaiting: PublicAwaiting | null;
+  // A failed run the customer can fix: where to correct their details and try again, and how many tries remain.
+  retry?: { startUrl: string; attemptsLeft: number; fixes?: string[] };
   // Optional: an older backend doesn't send these, and the page copes without them.
   siteHost?: string;
   startedAt?: string;

@@ -73,6 +73,8 @@ export interface PublicReviewField extends WorkflowInput {
 }
 
 export interface PublicReviewForm {
+  // After a failed try: the fields the website refused -> what is wrong with each. Shown on the fields on open.
+  fixes?: Record<string, string>;
   displayName: string;
   groups: Array<{ title: string; keys: string[] }>;
   fields: PublicReviewField[];
