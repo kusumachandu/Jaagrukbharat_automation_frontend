@@ -3,6 +3,8 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { PublicReviewField, PublicReviewForm } from "@/lib/public-api";
 import { conditionHolds, fieldMode } from "@/lib/inputOptions";
+import { NicHit } from "@/lib/nicSearch";
+import { NicSearch } from "./NicSearch";
 
 interface ReviewFormProps {
   form: PublicReviewForm;
@@ -71,6 +73,27 @@ export function ReviewForm({ form, submitting, serverErrors, onConfirm }: Review
     setErrors((prev) => {
       if (!prev[key]) return prev;
       const { [key]: _gone, ...rest } = prev;
+      return rest;
+    });
+  }
+
+  // A line picked from the NIC search: its 5-digit code goes on the form, and its wording (cleaned to what the
+  // description question accepts) fills "what does your business do" — the run's backup if the portal refuses the code.
+  function pickNic(hit: NicHit | null) {
+    if (!hit) {
+      setValue("nic_5_digit", "");
+      return;
+    }
+    const words = hit.name
+      .replace(/\([^)]*\)/g, " ")
+      .replace(/[^A-Za-z0-9 ,&/'().-]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    let text = words.length > 100 ? words.slice(0, 100).replace(/\s+\S*$/, "") : words;
+    text = text.replace(/[^A-Za-z0-9)]+$/, "");
+    setValues((prev) => ({ ...prev, nic_5_digit: hit.code, ...(byKey.has("business_description") ? { business_description: text } : {}) }));
+    setErrors((prev) => {
+      const { nic_5_digit: _a, business_description: _b, ...rest } = prev;
       return rest;
     });
   }
@@ -148,7 +171,7 @@ export function ReviewForm({ form, submitting, serverErrors, onConfirm }: Review
                 >
                   <label htmlFor={`rv-input-${f.key}`} className="rv-label">
                     <span>
-                      {f.label || f.key}
+                      {f.key === "nic_5_digit" ? "Search your type of business" : f.label || f.key}
                       {f.required !== false && <span className="rv-star"> *</span>}
                     </span>
                     {f.prefilled ? (
@@ -158,7 +181,9 @@ export function ReviewForm({ form, submitting, serverErrors, onConfirm }: Review
                     ) : null}
                   </label>
 
-                  {mode.mode === "waiting" ? (
+                  {f.key === "nic_5_digit" ? (
+                    <NicSearch inputId={`rv-input-${f.key}`} code={value} error={error} onPick={pickNic} />
+                  ) : mode.mode === "waiting" ? (
                     <select id={`rv-input-${f.key}`} className="rv-input" disabled value="">
                       <option value="">Choose {mode.waitingFor.join(" and ").toLowerCase()} first</option>
                     </select>

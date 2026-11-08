@@ -190,7 +190,7 @@ export interface ApplicationRule {
 
 // The application's own outcome (success only once its reference is in hand), separate from the task status.
 export interface ApplicationStatus {
-  status: "success" | "failed" | "cancelled" | "in_progress";
+  status: "success" | "failed" | "pending" | "cancelled" | "in_progress";
   reference?: string;
   referenceLabel?: string;
   reason?: string;

@@ -3,6 +3,7 @@ import { ApplicationStatus } from "@/lib/types";
 const STYLES: Record<ApplicationStatus["status"], { dot: string; text: string; label: string; pulse?: boolean }> = {
   success: { dot: "bg-ok", text: "text-ok", label: "Success" },
   failed: { dot: "bg-danger", text: "text-danger", label: "Failed" },
+  pending: { dot: "bg-signal", text: "text-signal", label: "Pending" },
   in_progress: { dot: "bg-signal", text: "text-signal", label: "In progress", pulse: true },
   cancelled: { dot: "bg-text-dim", text: "text-text-muted", label: "Cancelled" },
 };

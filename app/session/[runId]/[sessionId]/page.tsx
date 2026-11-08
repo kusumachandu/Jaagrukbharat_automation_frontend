@@ -274,14 +274,14 @@ export default function SessionWindow({
             style={{ marginBottom: 12 }}
           >
             <b>
-              Application: {summary.application.status === "success" ? "Successful" : "Not completed"}
+              Application: {summary.application.status === "success" ? "Successful" : summary.application.status === "pending" ? "Pending" : "Not completed"}
             </b>
             {summary.application.status === "success" && summary.application.reference && (
               <div>
                 {summary.application.referenceLabel ?? "Reference"}: <b>{summary.application.reference}</b>
               </div>
             )}
-            {summary.application.status === "failed" && summary.application.reason && (
+            {(summary.application.status === "failed" || summary.application.status === "pending") && summary.application.reason && (
               <div>{summary.application.reason}</div>
             )}
           </div>
