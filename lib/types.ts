@@ -378,7 +378,7 @@ export interface RunSummary {
 
 // What the end-user session window is told (GET /public/sessions/:runId/:key).
 export interface PublicAwaiting {
-  kind: "captcha" | "otp" | "text" | "operator";
+  kind: "captcha" | "otp" | "text" | "nic" | "operator";
   prompt: string;
   length?: number;
   hasImage: boolean;

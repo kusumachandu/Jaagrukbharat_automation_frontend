@@ -186,3 +186,12 @@
 .jbs .nic-name { font-size: 14px; font-weight: 600; line-height: 1.35; }
 .jbs .nic-change { margin-top: 8px; padding: 0; border: 0; background: transparent; color: var(--brand); font: 600 13px inherit; font-family: inherit; cursor: pointer; text-decoration: underline; }
 .jbs .rv-summary { color: var(--bad); font-size: 14px; font-weight: 600; margin: 4px 0 12px; }
+
+.jbs .nic-summary { border: 1.5px solid var(--line); background: var(--in); border-radius: 12px; padding: 12px 14px; margin: 4px 0 14px; }
+.jbs .nic-summary dl { margin: 0 0 10px; display: grid; grid-template-columns: 1fr; gap: 2px; }
+.jbs .nic-summary dt { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; opacity: .6; margin-top: 8px; }
+.jbs .nic-summary dt:first-child { margin-top: 0; }
+.jbs .nic-summary dd { margin: 0; font-size: 15px; font-weight: 600; line-height: 1.35; }
+.jbs .nic-summary .nic-lead { display: block; font-weight: 500; opacity: .75; }
+.jbs .nic-points { margin: 4px 0 0; padding-left: 20px; }
+.jbs .nic-points li { margin: 3px 0; }
