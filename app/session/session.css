@@ -155,6 +155,9 @@
 .jbs .rv-field.has-error { background: var(--badbg); border-color: var(--bad); }
 .jbs .rv-label { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-size: 13px; font-weight: 600; color: var(--tx); margin-bottom: 6px; }
 .jbs .rv-star { color: var(--bad); }
+.jbs .rv-section { font-weight: 500; color: var(--mute, #6b7280); font-size: 12px; }
+.jbs .rv-hint { font-size: 13px; color: var(--mute, #6b7280); margin: 0 0 12px; }
+.jbs .rv-first { border-color: var(--turnline); }
 .jbs .rv-tag { font: 600 10px var(--font-jbmono), monospace; letter-spacing: .03em; padding: 2px 8px; border-radius: 99px; border: 1px solid; white-space: nowrap; }
 .jbs .rv-tag.ok { color: var(--ok); border-color: var(--ok); background: var(--okbg); }
 .jbs .rv-tag.need { color: var(--turn); border-color: var(--turnline); background: #fff; }
