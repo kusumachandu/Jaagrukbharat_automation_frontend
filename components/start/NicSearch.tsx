@@ -12,44 +12,39 @@ interface NicSearchProps {
   onPick: (hit: NicHit | null) => void;
 }
 
-// "What does your business do?" — the customer types it in plain words, picks the closest line from the official NIC
-// list, and the 2-digit, 4-digit and 5-digit codes the portal asks for are filled in for them.
+// "What does your business do?" — the customer types it in plain words and picks the closest line from the official NIC
+// list; the 2-digit, 4-digit and 5-digit codes the portal asks for then fill in below the box. The box stays on screen
+// (showing the picked line) so they can always type again; typing clears the codes until a new line is picked.
 export function NicSearch({ inputId, code, error, onPick }: NicSearchProps) {
-  const [query, setQuery] = useState("");
+  // What the customer has typed since the last pick; null = show the picked line's own wording.
+  const [typed, setTyped] = useState<string | null>(null);
   const [open, setOpen] = useState(true);
   const chosen = useMemo(() => (/^\d{5}$/.test(code) ? nicByCode(code) : null), [code]);
-  const hits = useMemo(() => (open ? searchNic(query) : []), [query, open]);
-
-  if (chosen) {
-    return (
-      <div data-testid="nic-chosen" className="nic-chosen">
-        <div className="nic-codes" aria-label="Chosen activity codes">
-          <span className="nic-chip"><b>{chosen.division}</b><i>Division</i></span>
-          <span className="nic-chip"><b>{chosen.classCode}</b><i>Class</i></span>
-          <span className="nic-chip main"><b>{chosen.code}</b><i>Activity</i></span>
-        </div>
-        <div className="nic-name">{chosen.name}</div>
-        <button type="button" className="nic-change" data-testid="nic-change" onClick={() => { onPick(null); setQuery(""); setOpen(true); }}>
-          Not right? Search again
-        </button>
-      </div>
-    );
-  }
+  const text = typed ?? chosen?.name ?? "";
+  const hits = useMemo(() => (open && typed !== null ? searchNic(typed) : []), [typed, open]);
 
   return (
     <div className="nic-search">
       <input
         id={inputId}
-        className={`rv-input${query.trim() ? "" : " nic-blink"}`}
+        className={`rv-input${text.trim() ? "" : " nic-blink"}`}
         type="text"
         autoComplete="off"
         data-testid="nic-query"
         aria-invalid={!!error}
         placeholder="Type what your business does, e.g. grocery shop, tailoring, mobile repair"
-        value={query}
-        onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
+        value={text}
+        onChange={(e) => {
+          setTyped(e.target.value);
+          setOpen(true);
+          if (chosen) onPick(null); // the old codes no longer match the text
+        }}
+        onFocus={(e) => {
+          // A picked line is a whole sentence: selecting it lets the customer just start typing something new.
+          if (typed === null && chosen) e.target.select();
+        }}
       />
-      {query.trim().length >= 3 && hits.length === 0 && (
+      {typed !== null && typed.trim().length >= 3 && hits.length === 0 && (
         <div className="nic-none" data-testid="nic-none">
           Nothing found. Try a simpler word, for example the main thing you sell or make.
         </div>
@@ -64,7 +59,11 @@ export function NicSearch({ inputId, code, error, onPick }: NicSearchProps) {
                 aria-selected={false}
                 className="nic-hit"
                 data-testid={`nic-hit-${h.code}`}
-                onClick={() => { setOpen(false); onPick(h); }}
+                onClick={() => {
+                  setOpen(false);
+                  setTyped(null);
+                  onPick(h);
+                }}
               >
                 <span className="nic-hit-name">{h.name}</span>
                 <span className="nic-hit-sub">{h.className}</span>
@@ -73,7 +72,17 @@ export function NicSearch({ inputId, code, error, onPick }: NicSearchProps) {
           ))}
         </ul>
       )}
-      <div className="nic-help">Pick the line that is closest to your work. The codes are filled in for you.</div>
+      {chosen ? (
+        <div data-testid="nic-chosen" className="nic-chosen">
+          <div className="nic-codes" aria-label="Chosen activity codes">
+            <span className="nic-chip"><b>{chosen.division}</b><i>NIC 2 digit</i></span>
+            <span className="nic-chip"><b>{chosen.classCode}</b><i>NIC 4 digit</i></span>
+            <span className="nic-chip main"><b>{chosen.code}</b><i>NIC 5 digit</i></span>
+          </div>
+        </div>
+      ) : (
+        <div className="nic-help">Type your work, then pick the line that is closest. The NIC codes fill in for you.</div>
+      )}
     </div>
   );
 }

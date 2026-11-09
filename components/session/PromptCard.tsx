@@ -87,6 +87,35 @@ export function PromptCard({
         ? "Type the characters exactly as shown in the picture."
         : null;
 
+  if (awaiting.kind === "details") {
+    return <DetailsForm awaiting={awaiting} submitting={submitting} error={error} onSend={(json) => submit(undefined, json)} />;
+  }
+
+  if (awaiting.kind === "nic-search") {
+    return (
+      <div data-testid="prompt-card" data-kind="nic-search" className="card ask">
+        <h3>Action needed · we&apos;re paused</h3>
+        <h2>What work does your business do?</h2>
+        <p className="hint">{awaiting.prompt}</p>
+        <NicSearch inputId="nic-ask-search" code={nicCode} onPick={(hit) => setNicCode(hit ? hit.code : "")} />
+        <button
+          type="button"
+          data-testid="nic-search-use"
+          className="btn"
+          disabled={submitting || !nicCode}
+          onClick={() => submit(undefined, nicCode)}
+        >
+          {submitting ? "Sending…" : "Use this & continue"}
+        </button>
+        {error && (
+          <p role="alert" className="err">
+            {error}
+          </p>
+        )}
+      </div>
+    );
+  }
+
   if (awaiting.kind === "nic") {
     return (
       <div data-testid="prompt-card" data-kind="nic" className="card ask">
@@ -183,6 +212,81 @@ export function PromptCard({
           Only enter this code if you asked {BRAND_NAME} to do this for you.
         </p>
       )}
+    </form>
+  );
+}
+
+// The website refused something the customer typed: ONE form with a box for each detail (what they typed is already in
+// it; a masked number such as the Aadhaar is left blank, "blank = keep"). No picture. Sent as one JSON answer.
+function DetailsForm({
+  awaiting,
+  submitting,
+  error,
+  onSend,
+}: {
+  awaiting: PublicAwaiting;
+  submitting: boolean;
+  error: string | null;
+  onSend: (json: string) => void;
+}) {
+  const fields = awaiting.fields ?? [];
+  const [vals, setVals] = useState<Record<string, string>>(() =>
+    Object.fromEntries(fields.map((f) => [f.key, f.masked ? "" : (f.current ?? "")])),
+  );
+  const names = fields.map((f) => f.title);
+  const list = names.length <= 1 ? names[0] ?? "details" : `${names.slice(0, -1).join(", ")} or ${names[names.length - 1]}`;
+
+  return (
+    <form
+      data-testid="prompt-card"
+      data-kind="details"
+      className="card ask"
+      onSubmit={(e) => {
+        e.preventDefault();
+        onSend(JSON.stringify(vals));
+      }}
+    >
+      <h3>Action needed · we&apos;re paused</h3>
+      <p className="fix-intro">
+        The official website did not accept your details. Please correct your{" "}
+        {fields.map((f, i) => (
+          <span key={f.key}>
+            {i > 0 && (i === fields.length - 1 ? " or " : ", ")}
+            <b>{f.title}</b>
+          </span>
+        ))}{" "}
+        if {fields.length > 1 ? "they are" : "it is"} wrong. If everything is right, just press Submit.
+      </p>
+      {fields.map((f, i) => (
+        <div key={f.key} className="fix-field">
+          <label htmlFor={`fix-${f.key}`}>
+            <b>{f.title}</b>
+            {f.hint && <span className="fix-hint"> — {f.hint}</span>}
+          </label>
+          <input
+            id={`fix-${f.key}`}
+            data-testid={`fix-${f.key}`}
+            className="rv-input"
+            value={vals[f.key] ?? ""}
+            onChange={(e) => setVals((p) => ({ ...p, [f.key]: e.target.value }))}
+            autoFocus={i === 0}
+            autoComplete="off"
+            autoCapitalize="none"
+            spellCheck={false}
+            maxLength={120}
+            disabled={submitting}
+            placeholder={f.masked && f.current ? `${f.current} — leave blank to keep` : ""}
+          />
+        </div>
+      ))}
+      {error && (
+        <p role="alert" className="err">
+          {error}
+        </p>
+      )}
+      <button type="submit" data-testid="prompt-submit" className="btn" disabled={submitting} aria-label={`Submit ${list}`}>
+        {submitting ? "Sending…" : "Submit & continue"}
+      </button>
     </form>
   );
 }

@@ -378,8 +378,10 @@ export interface RunSummary {
 
 // What the end-user session window is told (GET /public/sessions/:runId/:key).
 export interface PublicAwaiting {
-  kind: "captcha" | "otp" | "text" | "nic" | "operator";
+  kind: "captcha" | "otp" | "text" | "nic" | "details" | "nic-search" | "operator";
   prompt: string;
+  // kind "details": one box per detail the website refused. `current` = what was typed (never for a masked one).
+  fields?: Array<{ key: string; title: string; hint?: string; current?: string; masked: boolean }>;
   length?: number;
   hasImage: boolean;
   canAnswer: boolean;
