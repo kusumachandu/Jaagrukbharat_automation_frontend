@@ -340,6 +340,25 @@ function RunId({ run, copied, copy }: Pick<RowProps, "run" | "copied" | "copy">)
   );
 }
 
+/** Who started the run: name and mobile on one line, the website's order id and session id under it. Nothing for hand-started runs. */
+function Customer({ run }: { run: RunListItem }) {
+  const c = run.customer;
+  if (!c || !(c.name || c.mobile || c.orderId || c.sessionId)) return null;
+  const who = [c.name, c.mobile].filter(Boolean).join(" · ");
+  return (
+    <div data-testid="run-customer" className="min-w-0 text-[11px]" title="Who started this run">
+      {who && <div className="truncate text-text-primary font-medium">{who}</div>}
+      {(c.orderId || c.sessionId) && (
+        <div className="truncate font-mono text-text-dim">
+          {c.orderId && <span>Order {c.orderId}</span>}
+          {c.orderId && c.sessionId && <span> · </span>}
+          {c.sessionId && <span>Session {c.sessionId}</span>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Chips({ run }: { run: RunListItem }) {
   const any = (run.status === RunStatus.SUCCESS && run.result) || run.application || run.fileCount > 0;
   if (!any) return null;
@@ -453,6 +472,7 @@ function SessionCard(props: RowProps) {
         <StatusBadge status={run.status} />
       </div>
       <RunId {...props} />
+      <Customer run={run} />
       <Chips run={run} />
       <Awaiting run={run} />
       <div className="flex items-center gap-2 text-[11px] font-mono text-text-dim mt-auto pt-1">
@@ -485,6 +505,7 @@ function SessionRow(props: RowProps) {
         </div>
         <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-mono text-text-dim">
           <RunId {...props} />
+          <Customer run={run} />
           <span>{when(run.startedAt ?? run.createdAt)}</span>
           {duration && <span>{duration}</span>}
           {run.awaiting === InterventionType.INPUT_REQUIRED && <span data-testid="awaiting-input" className="text-warn">● waiting for a code from the user</span>}

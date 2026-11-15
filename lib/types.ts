@@ -321,6 +321,9 @@ export interface RunListItem extends Run {
   // What (if anything) the run is waiting on someone for.
   awaiting: InterventionType | null;
   fileCount: number;
+  // Who started it, when it came from a customer's Start page (null for runs started by hand).
+  // The name and mobile arrive masked for the User role.
+  customer?: { name: string | null; mobile: string | null; orderId: string | null; sessionId: string | null; service: string | null } | null;
 }
 
 export type SummaryStepState =
