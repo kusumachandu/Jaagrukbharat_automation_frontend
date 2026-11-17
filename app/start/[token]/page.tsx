@@ -242,10 +242,23 @@ export default function StartPage({ params }: { params: { token: string } }) {
       )}
 
       {view.status === "failed" && (
-        <div data-testid="start-failed" className="center">
-          <h1>We could not finish this</h1>
+        <div data-testid="start-failed" className="failed-panel">
+          <h1>We could not complete your application</h1>
+          {view.lastFailure && (
+            <div data-testid="failed-reason" className="note bad">
+              <b>What went wrong</b>
+              <div>{view.lastFailure}</div>
+            </div>
+          )}
+          <div data-testid="operator-callback" className="note care">
+            <b>Our team will contact you</b>
+            <div>
+              All automatic attempts for this request have been used. A human operator from our team will review your
+              application personally and get back to you shortly. You do not need to start it again.
+            </div>
+          </div>
           <p className="sub">
-            All the tries for this request were used. Please call us on <b>{SUPPORT_PHONE}</b> and we will help you.
+            For urgent help, please call us on <b>{SUPPORT_PHONE}</b>.
           </p>
         </div>
       )}

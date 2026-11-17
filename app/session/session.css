@@ -96,6 +96,12 @@
 .jbs .note.ok b { color: var(--ok); }
 .jbs .note.hold { background: var(--turnbg); border: 1px solid var(--turnline); }
 .jbs .note.hold b { color: var(--turn); }
+.jbs .note.bad { background: var(--badbg); border: 1px solid var(--bad); }
+.jbs .note.bad b { color: var(--bad); display: block; margin-bottom: 2px; }
+.jbs .note.care { background: var(--okbg); border: 1px solid var(--ok); border-left-width: 5px; padding: 16px 18px; }
+.jbs .note.care b { color: var(--ok); display: block; font-size: 16px; margin-bottom: 4px; }
+.jbs .failed-panel { padding-top: 32px; }
+.jbs .failed-panel h1 { margin-bottom: 16px; }
 
 /* result */
 .jbs .hero { border-color: var(--ok); background: linear-gradient(180deg, var(--okbg), var(--card) 70%); }
