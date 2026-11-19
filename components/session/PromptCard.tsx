@@ -263,20 +263,39 @@ function DetailsForm({
             <b>{f.title}</b>
             {f.hint && <span className="fix-hint"> — {f.hint}</span>}
           </label>
-          <input
-            id={`fix-${f.key}`}
-            data-testid={`fix-${f.key}`}
-            className="rv-input"
-            value={vals[f.key] ?? ""}
-            onChange={(e) => setVals((p) => ({ ...p, [f.key]: e.target.value }))}
-            autoFocus={i === 0}
-            autoComplete="off"
-            autoCapitalize="none"
-            spellCheck={false}
-            maxLength={120}
-            disabled={submitting}
-            placeholder={f.masked && f.current ? `${f.current} — leave blank to keep` : ""}
-          />
+          {f.options?.length ? (
+            <select
+              id={`fix-${f.key}`}
+              data-testid={`fix-${f.key}`}
+              className="rv-input"
+              value={vals[f.key] ?? ""}
+              onChange={(e) => setVals((p) => ({ ...p, [f.key]: e.target.value }))}
+              autoFocus={i === 0}
+              disabled={submitting}
+            >
+              <option value="">Choose…</option>
+              {f.options.map((o) => (
+                <option key={o} value={o}>
+                  {o}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input
+              id={`fix-${f.key}`}
+              data-testid={`fix-${f.key}`}
+              className="rv-input"
+              value={vals[f.key] ?? ""}
+              onChange={(e) => setVals((p) => ({ ...p, [f.key]: e.target.value }))}
+              autoFocus={i === 0}
+              autoComplete="off"
+              autoCapitalize="none"
+              spellCheck={false}
+              maxLength={120}
+              disabled={submitting}
+              placeholder={f.masked && f.current ? `${f.current} — leave blank to keep` : ""}
+            />
+          )}
         </div>
       ))}
       {error && (
